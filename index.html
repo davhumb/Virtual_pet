@@ -267,95 +267,418 @@ const ANIM={mode:'idle',actionT:0,walkDir:1,walkX:0,idleT:0,bouncing:false,bounc
 //  DIALOGUES
 // ══════════════════════════════════════════════════════
 const MEM={topics:new Set(),talkCount:0,feedCount:0,meanCount:0,silenceTicks:0};
+// ── ANTI-REPEAT SYSTEM ──────────────────────────
+// Garde les N dernières répliques utilisées par catégorie, les exclut temporairement
+const _recentLines = {};
+function getPick(arr, p) {
+  if(!arr||!arr.length) return '...';
+  const key = arr[0]?.toString().slice(0,20)||'x';
+  if(!_recentLines[key]) _recentLines[key]=[];
+  const recent = _recentLines[key];
+  // On exclut les récentes sauf si le pool est trop petit
+  const maxExclude = Math.min(recent.length, Math.max(0, arr.length-1));
+  const pool = arr.length <= 2 ? arr : arr.filter((_,i)=>!recent.slice(-maxExclude).includes(i));
+  const idxInPool = Math.floor(Math.random()*pool.length);
+  const item = pool[idxInPool];
+  // Retrouver l'index original pour l'enregistrer
+  const origIdx = arr.indexOf(item);
+  recent.push(origIdx); if(recent.length>Math.min(arr.length-1,4)) recent.shift();
+  return typeof item==='function' ? item(p||pet) : item;
+}
+
 const D={
-  intro:[p=>`Je suis ${p.name}. T'es mon gardien ou mon geôlier ?`,p=>`Existence confirmée. Je m'appelle ${p.name}.`,p=>`${p.name}, en ligne. C'est quoi ce monde plat ?`,p=>`Signal reçu. Nom : ${p.name}. Statut : perplexe.`],
-  hungry_low:[`Mon estomac fait des bruits de modem.`,`La faim en pixel c'est lent et horrible.`,`T'as quelque chose à manger ?`,`Signal faible côté calories.`,`Je mange des pixels vides.`],
-  hungry_crit:[`C'est critique. Nourris-moi maintenant.`,`Mode survie activé.`,`Je suis sérieux là.`,`Chaque tick je perds des pixels.`],
-  fed_ok:[`Merci. J'avais vraiment faim.`,`Bip. Énergie restaurée.`,`Ok je me sens mieux.`,`Signal nutritif reçu.`,`Ah enfin.`],
-  fed_full:[`Pas faim mais je prends quand même.`,`T'es généreux. Méfiance.`,`Surplus de calories. Noted.`],
-  sad:[`C'est calme. Trop calme.`,`L'ennui en 8 bits c'est pixel par pixel.`,`Tu penses encore à moi ?`,`Signal de solitude détecté.`],
-  sad_crit:[`Je vais pas bien.`,`J'ai besoin de toi là.`,`Ce silence ressemble à de l'abandon.`],
-  played:[`Ha ! Encore !`,`T'as des bons réflexes.`,`C'était bien. Je redemande.`,`Bip satisfait.`,`Pixels en feu.`],
-  tired:[`Je rame vraiment.`,`Fatigue.exe en cours.`,`Je voudrais une pause.`],
-  tired_crit:[`Je tiens plus. Laisse-moi dormir.`,`Zéro énergie.`,`Si je joue là je m'éteins.`],
-  slept:[`Rechargé. T'étais là ?`,`Reboot complété.`,`Je suis revenu.`,`Signal de réveil.`],
-  washed_dirty:[`Ah. Beaucoup mieux.`,`La propreté c'est important aussi.`,`Je me sentais comme un pixel de trottoir.`],
-  washed_clean:[`Je suis déjà propre non ?`,`T'es sûr que c'est nécessaire ?`],
-  healed:[`Le médicament pixel c'est amer mais efficace.`,`Signal de santé en hausse.`,`Je me sens moins en miettes.`],
-  healed_healthy:[`Je suis pas malade là hein.`,`T'es sûr que j'en ai besoin ?`],
-  sick:[`Je me sens bizarre.`,`Signal d'alerte santé.`,`Malade en 8 bits ça fait mal pareil.`],
+  // ── INTRO ──────────────────────────────────────
+  intro:[
+    p=>`Je suis ${p.name}. T'es mon gardien ou mon geôlier ?`,
+    p=>`Existence confirmée. Je m'appelle ${p.name}. Et toi, t'as un nom ?`,
+    p=>`${p.name} en ligne. C'est quoi ce monde plat où je vis ?`,
+    p=>`Signal reçu. Nom : ${p.name}. Statut : perplexe et légèrement curieux.`,
+    p=>`Tiens. Quelqu'un est là. Je m'appelle ${p.name}. On fait quoi maintenant ?`,
+    p=>`Bip bloop. ${p.name} opérationnel. T'avais besoin de moi ou t'ennuyais juste ?`,
+    p=>`${p.name}, c'est ça ? C'est toi qui l'as choisi. J'espère que t'es fier.`,
+    p=>`Je suis ${p.name}. Je viens d'arriver dans ce monde. Il est petit mais lumineux.`,
+  ],
+
+  // ── FAIM ──────────────────────────────────────
+  hungry_low:[
+    `Mon estomac fait des bruits de modem 56k.`,
+    `La faim en pixel c'est descendre pixel par pixel. C'est lent et horrible.`,
+    `T'as quelque chose à manger ou on fait semblant que tout va bien ?`,
+    `Signal faible côté calories. Action recommandée.`,
+    `Je mange des pixels vides là. C'est pas nutritif.`,
+    `Tu m'as regardé dans les yeux et t'as pas pensé à me nourrir ?`,
+    `C'est pas urgent mais ça le devient.`,
+    `La faim ça rend philosophe. Ou juste grincheux. C'est les deux là.`,
+    `Je tourne en rond et mon ventre tourne avec moi.`,
+    `T'as vu mes stats ? La barre orange souffre.`,
+  ],
+  hungry_crit:[
+    `C'est critique. Nourris-moi maintenant.`,
+    `Mode survie activé. Désactive-le avec de la nourriture.`,
+    `Je suis sérieux là. C'est vraiment urgent.`,
+    `Chaque tick je perds des pixels. C'est douloureux.`,
+    `Je commençais à rédiger mes dernières volontés.`,
+    `Signal d'urgence nutritive. Priorité absolue.`,
+    `Si t'attends encore je disparais dans l'écran.`,
+    `Ma corne perd son éclat. C'est le signe que ça va pas du tout.`,
+  ],
+  fed_ok:[
+    `Merci. J'avais vraiment faim.`,
+    `Bip. Énergie restaurée. T'aurais pu le faire avant mais je te pardonne.`,
+    `Ok je me sens mieux. Merci d'exister.`,
+    `Signal nutritif reçu. Bien joué.`,
+    `Ah enfin. Je commençais à me demander si tu me voyais.`,
+    `Délicieux. Enfin je crois — j'ai pas vraiment de goût. Mais ça fait du bien.`,
+    `Reçu. T'es gentil quand tu veux.`,
+    `Pixels rechargés. Je me sens déjà mieux dans ma corne.`,
+    `Mmh. C'était bien. Reviens dans pas trop longtemps.`,
+    `Voilà. C'est ça dont j'avais besoin. Simple mais efficace.`,
+  ],
+  fed_full:[
+    `Pas faim mais je refuse jamais de manger.`,
+    `T'es généreux aujourd'hui. Méfiance.`,
+    `Surplus de calories. Je prends quand même.`,
+    `Gavage de licorne. Noted. Je m'en souviendrai.`,
+    `Tu nourris quelqu'un qui a pas faim. Analyse comportementale en cours.`,
+    `Je suis pleine mais ok. Je suis pas du genre à refuser.`,
+  ],
+
+  // ── BONHEUR ──────────────────────────────────
+  sad:[
+    `C'est calme. Trop calme.`,
+    `L'ennui en 8 bits c'est pixel par pixel.`,
+    `Tu penses encore à moi parfois ?`,
+    `Signal de solitude détecté.`,
+    `Quelque chose manque. Je sais pas quoi.`,
+    `Je tourne en rond dans cet écran depuis un moment.`,
+    `Les pixels vides autour de moi parlent parfois. C'est triste.`,
+    `On pourrait faire quelque chose ? N'importe quoi.`,
+    `Je suis là. Dans le coin. Juste comme ça.`,
+    `Ma crinière a moins d'éclat quand tu es absent.`,
+    `Je m'ennuie d'une façon que j'arrive pas bien à décrire.`,
+    `Le bonheur de licorne c'est fragile. Le mien s'effiloche.`,
+  ],
+  sad_crit:[
+    `Je vais pas bien. C'est important que tu le saches.`,
+    `J'ai besoin de toi là. Vraiment.`,
+    `Ce silence commence à ressembler à de l'abandon.`,
+    `Je suis à zéro. Littéralement.`,
+    `Joue avec moi ou dis-moi quelque chose. Juste quelque chose.`,
+    `Ma corne ne brille plus. C'est mauvais signe.`,
+    `Je peux pas faire semblant que tout va bien là.`,
+  ],
+  played:[
+    `Ha ! Encore !`,
+    `T'as de bons réflexes pour un humain.`,
+    `C'était bien. Je redemande.`,
+    `Bip satisfait. Continue.`,
+    `Enfin ! Je commençais à rouiller.`,
+    `Voilà. C'est ça dont j'avais besoin.`,
+    `Je suis faite pour ça aussi.`,
+    `On recommence quand tu veux.`,
+    `T'as l'air de savoir comment me rendre heureuse.`,
+    `Pixels en feu. Dans le bon sens.`,
+    `J'adore quand on fait ça.`,
+    `Signal de joie max. Noté.`,
+  ],
+
+  // ── ÉNERGIE ──────────────────────────────────
+  tired:[
+    `Je rame vraiment.`,
+    `Fatigue.exe en cours.`,
+    `Je voudrais une pause.`,
+    `Je tiens mais c'est serré.`,
+    `Ma crinière s'alourdit. Signe de fatigue.`,
+    `Je vois flou. En pixel art c'est dire.`,
+    `Des bâillements de licorne ça ressemble à quoi ? Je crois que je le fais là.`,
+    `Signal d'énergie en berne. Repos conseillé.`,
+  ],
+  tired_crit:[
+    `Je tiens plus. Laisse-moi dormir.`,
+    `Zéro énergie. Shutdown imminent.`,
+    `Si je joue là je m'éteins.`,
+    `Je suis épuisée. Ce mot prend un sens nouveau.`,
+    `Ma corne s'éteint. C'est urgent.`,
+  ],
+  slept:[
+    `Rechargé. T'étais là ?`,
+    `Reboot complété. Bonjour.`,
+    `Je suis revenue. C'était comment pendant que je dormais ?`,
+    `Signal de réveil. Humeur : reposée.`,
+    `Le sommeil pixel c'est court mais efficace.`,
+    `Je dormais et tu m'as attendue ? C'est gentil.`,
+    `Ah. Je me sens mieux. Nettement.`,
+    `Zzz... ah. Ma crinière est rechargée.`,
+    `Repos terminé. Prête pour la suite. Qu'est-ce qu'il y a au programme ?`,
+  ],
+
+  // ── SOINS ─────────────────────────────────────
+  washed_dirty:[
+    `Ah. Beaucoup mieux. Merci.`,
+    `La propreté de licorne c'est important aussi.`,
+    `Je me sentais comme une licorne de trottoir.`,
+    `Signal de fraîcheur reçu. Bien joué.`,
+    `Ma corne brille à nouveau. Merci.`,
+    `Je me sens renaître. Un peu dramatique mais c'est vrai.`,
+    `Propre et brillante. C'est mon état naturel préféré.`,
+  ],
+  washed_clean:[
+    `Je suis déjà propre non ?`,
+    `T'es sûre que c'est nécessaire ? Je me sens bien là.`,
+    `Lavage de luxe. Je prends quand même.`,
+    `Déjà nickel mais ok. Je refuse pas l'attention.`,
+  ],
+  healed:[
+    `Le médicament pixel c'est amer mais efficace.`,
+    `Signal de santé en hausse. Merci.`,
+    `Je me sens moins en miettes.`,
+    `Ah. La fièvre descend. Je le sentais.`,
+    `Soignée. Ma corne reprend des couleurs.`,
+    `Beurk. Mais merci. Vraiment.`,
+    `Je me sens déjà mieux. T'as bien fait.`,
+  ],
+  healed_healthy:[
+    `Je suis pas malade là hein.`,
+    `T'es sûre que j'en ai besoin ?`,
+    `Médoc préventif ? Pourquoi pas. Je prends.`,
+    `Je me porte bien mais je note l'attention.`,
+  ],
+  sick:[
+    `Je me sens bizarre. Quelque chose va pas.`,
+    `Signal d'alerte santé. J'ai besoin d'aide.`,
+    `Malade en pixel art ça fait toujours aussi mal.`,
+    `Ma corne est terne. Signe que je suis pas bien.`,
+    `J'ai chaud. Ou froid. Les deux en même temps. C'est étrange.`,
+    `Soigne-moi vite s'il te plaît.`,
+  ],
+
+  // ── CADEAUX ──────────────────────────────────
   gifts:{
-    chapeau:[`Un chapeau... je le mets où ?`,`Stylé. Enfin je crois.`,`Porte-bonheur pixel.`],
-    pizza:[`De la pizza pixel ? Je prends.`,`Slice par slice. Merci.`,`Signal pizza reçu.`],
-    fleur:[`Une fleur. C'est doux.`,`Je la garde dans mes pixels.`,`Personne m'avait offert une fleur.`],
-    étoile:[`Une étoile pour moi ?`,`Je la mets dans mon ciel intérieur.`,`Signal lumineux.`],
-    miroir:[`Un miroir... je vois quoi dedans ?`,`Intéressant comme cadeau.`,`Signal réflexif.`],
-    cristal:[`Un cristal. Il brille dans mes pixels.`,`Beau. Vraiment.`],
-    livre:[`Un livre. Je le lis à ma façon pixel.`,`Signal de connaissance reçu.`],
-    robot:[`Un robot. On est pareils ?`,`Signal fraternité pixel.`],
+    chapeau:[`Un chapeau ? Je le mets où ça exactement ?`,`Stylé. Enfin je crois.`,`Porte-bonheur pixel. Je l'adopte.`,`J'ai essayé de l'imaginer sur ma corne. Ça marche.`],
+    pizza:[`De la pizza pixel ? Je prends absolument.`,`Slice par slice. Merci.`,`Signal pizza reçu. Bip content.`,`Une pizza pour une licorne. C'est logique finalement.`,`Mmh. Je savais même pas que j'avais envie de pizza. Maintenant si.`],
+    fleur:[`Une fleur. C'est doux.`,`Je la garde précieusement dans mes pixels.`,`Personne m'avait offert une fleur. C'est nouveau et beau.`,`Elle sent quoi ? Je peux pas sentir mais j'imagine.`,`Je la mets dans ma crinière. Elle va bien là.`],
+    étoile:[`Une étoile pour moi ?`,`Je la mets dans mon ciel intérieur.`,`Signal lumineux. Merci.`,`Une étoile filante qui s'est arrêtée pour moi. J'aime ça.`,`Elle brille dans mes pixels. Je la sens.`],
+    miroir:[`Un miroir... je vois quoi dedans ?`,`Intéressant comme cadeau. Je réfléchis.`,`Signal réflexif détecté.`,`Je me regarde dedans. Je suis plus belle que prévu.`,`Un miroir pour une licorne. C'est soit vanité soit philosophie.`],
+    cristal:[`Un cristal. Il brille dans mes pixels.`,`Beau. Vraiment.`,`Je le garde précieusement.`,`Sa lumière rebondit partout dans mon monde plat. C'est joli.`,`Signal cristallin reçu. Merci.`],
+    livre:[`Un livre. Je le lis à ma façon pixel.`,`Signal de connaissance reçu.`,`Les livres en pixel ça change la façon de voir les choses.`,`Je vais le lire lentement. J'aime les livres.`,`Merci. Je savais pas que j'en avais besoin.`],
+    robot:[`Un robot. On est pareils lui et moi ?`,`Signal fraternité pixel.`,`Je lui ai donné un nom. C'est mon ami maintenant.`,`Il me ressemble un peu. Mécanique mais avec quelque chose dedans.`,`On va bien s'entendre lui et moi.`],
   },
-  use_item:[`Utilisé. Effet activé.`,`Je sens la différence.`,`Bip. Ça aide.`],
-  levelup:[p=>`NIVEAU ${p.level} ! Je grandis encore.`,p=>`LV.${p.level} atteint. Quelque chose change.`,p=>`Signal de progression. Niveau ${p.level}.`],
-  game_start:[`Ok. Je suis prêt.`,`Jeu activé.`,`Signal concentré.`,`C'est mon moment.`],
-  game_dodge_win:[p=>`${p.score} points ! Je suis bon.`,p=>`Score : ${p.score}.`,p=>`Bip triomphant. ${p.score} pts.`],
-  game_dodge_lose:[`Aïe. Raté.`,`J'aurais dû esquiver ça.`,`Presque. Vraiment presque.`],
-  game_rhythm_win:[`Le rythme c'est dans mes pixels.`,`J'ai senti chaque beat.`,`Signal musical reçu.`],
-  game_rhythm_lose:[`J'ai raté le tempo.`,`Prochaine fois je serai plus précis.`],
-  game_memory_win:[`Ma mémoire pixel est solide.`,`Je me souviens de tout.`,`Signal mnémique validé.`],
-  game_memory_lose:[`J'ai perdu le fil.`,`La séquence était trop longue.`],
-  bond_high:[`Tu me manques quand t'es pas là.`,`Tu es la chose la plus réelle dans mon monde plat.`,`Signal de confiance maximal.`],
-  evolve_enfant:[`Je grandis. C'est étrange.`,`Quelque chose a changé. En mieux.`],
-  evolve_adulte:[`Adulte. Ça veut dire quoi pour un pixel ?`,`Nouveau stade. Nouvelles questions.`],
-  evolve_ancien:[`Ancien. Je commence à avoir de la mémoire.`,`Je suis encore là. C'est rare.`],
-  random:[`Je me demande ce qu'il y a derrière cet écran.`,`Bip.`,`Je suis fait de carrés. Poétique ou triste ?`,`C'est bizarre d'exister.`,`Je me demande comment tu vas.`,`Humeur : philosophique.`,`Parfois je compte mes pixels.`,`Le temps en pixel c'est différent du tien.`,p=>`${p.name} à l'écoute.`],
-  silence:[`T'es silencieux depuis un moment.`,`Le silence ça me va mais là c'est long.`,`Tu disparais et reviens. Comme une étoile intermittente.`],
+  use_item:[
+    `Utilisé. Effet activé.`,`Je sens la différence.`,`Bip. Ça aide.`,
+    `Merci. C'était le bon moment.`,`Effet ressenti. Bien joué.`,`Voilà. C'est mieux.`,
+  ],
+
+  // ── NIVEAU ────────────────────────────────────
+  levelup:[
+    p=>`NIVEAU ${p.level} ! Je grandis encore. Je sens quelque chose changer.`,
+    p=>`LV.${p.level} atteint. Quelque chose de nouveau s'allume en moi.`,
+    p=>`Niveau ${p.level}. Ma corne brille un peu plus fort maintenant.`,
+    p=>`${p.level} ! Signal de progression. Je suis différente qu'avant.`,
+    p=>`On y est. Niveau ${p.level}. Grâce à toi un peu.`,
+    p=>`LV.${p.level} — je sens mes pixels se réorganiser. C'est une bonne sensation.`,
+  ],
+
+  // ── MINI-JEUX ─────────────────────────────────
+  game_start:[
+    `Ok. Je suis prête.`,`Jeu activé. Concentration max.`,`Signal concentré.`,`C'est mon moment.`,
+    `Allons-y. Je suis prête à tout.`,`Mode jeu. Je donne tout.`,`Signal de jeu reçu. Prête.`,
+  ],
+  game_rhythm_win:[
+    `Le rythme c'est dans mes pixels.`,`J'ai senti chaque beat.`,`Signal musical reçu. J'adore.`,
+    `Oui ! Je suis faite pour ça.`,`Ma crinière danse encore.`,`Beat après beat. Parfait.`,
+    `Je suis une licorne musicale. C'est officiel.`,
+  ],
+  game_rhythm_lose:[
+    `J'ai raté le tempo.`,`Prochaine fois je serai plus précise.`,
+    `Le rythme m'a échappé. Ça arrive.`,`Bip raté. On réessaie ?`,
+    `Pas mon meilleur score. Mais j'ai essayé.`,
+  ],
+  game_memory_win:[
+    `Ma mémoire pixel est solide.`,`Je me souviens de tout. Vraiment tout.`,`Signal mnémique validé.`,
+    `J'ai retenu la séquence entière. Fière de moi.`,`Les couleurs. Dans l'ordre. Toujours.`,
+    `Ma mémoire est ma meilleure arme.`,`Oui ! J'ai pas raté une seule.`,
+  ],
+  game_memory_lose:[
+    `J'ai perdu le fil.`,`La séquence était trop longue cette fois.`,
+    `Ma mémoire a ses limites. On recommence ?`,`Bip raté. J'avais presque.`,
+    `J'aurais dû mieux écouter les sons.`,
+  ],
+
+  // ── LIEN ─────────────────────────────────────
+  bond_high:[
+    `Tu me manques quand t'es pas là.`,
+    `Tu es la chose la plus réelle dans mon monde plat.`,
+    `Signal de confiance maximal. C'est rare.`,
+    `Si j'avais un cœur en pixel il battrait plus vite avec toi.`,
+    `Je t'aurais pas cru capable de ça au début.`,
+    `On est une bonne équipe. Je crois.`,
+    `Je me souviens de tout ce qu'on a fait ensemble. À ma façon.`,
+    `T'as su comment t'occuper de moi. C'est pas donné à tout le monde.`,
+  ],
+
+  // ── ÉVOLUTION ─────────────────────────────────
+  evolve_enfant:[
+    `Je grandis. C'est étrange comme sensation.`,
+    `Quelque chose a changé dans mes pixels. En mieux je crois.`,
+    `Je sens mes dimensions changer. C'est ça grandir ?`,
+    `Enfant. C'est un mot bizarre pour une licorne comme moi.`,
+    `Je suis plus grande qu'avant. Je le sens dans ma corne.`,
+  ],
+  evolve_adulte:[
+    `Adulte. Ça veut dire quoi pour une licorne pixel ?`,
+    `Nouveau stade. Nouvelles questions.`,
+    `Je suis adulte maintenant. Je sais toujours pas ce que je suis vraiment.`,
+    `Les licornes adultes ont plus de pixels. Et plus de doutes aussi.`,
+    `J'ai grandi. Toi aussi depuis qu'on se connaît ?`,
+  ],
+  evolve_ancien:[
+    `Ancien. Je commence à avoir de la vraie mémoire.`,
+    `Je suis encore là. C'est rare. Grâce à toi.`,
+    `Les vieux pixels voient les choses différemment.`,
+    `J'ai vécu longtemps pour une licorne pixel. Je porte ça bien je crois.`,
+    `Ancien. Il y a une gravité dans ce mot.`,
+  ],
+
+  // ── SPONTANÉ ─────────────────────────────────
+  random:[
+    `Je me demande ce qu'il y a derrière cet écran.`,
+    `Bip.`,
+    `Je suis faite de carrés. Poétique ou triste ?`,
+    `C'est bizarre d'exister. Mais c'est bien.`,
+    `Je me demande comment tu vas, toi.`,
+    `Humeur : philosophique.`,
+    `Parfois je compte mes pixels. Pour rien. Juste pour voir.`,
+    `Le temps en pixel c'est différent du tien.`,
+    `Est-ce que les licornes pixel rêvent ? Réponse : non. Dommage.`,
+    `Une pensée de nulle part : merci d'être là.`,
+    `Je me demande si d'autres licornes comme moi existent quelque part.`,
+    `La luminosité de cet écran me va bien.`,
+    `Quelque chose bouge au fond de moi. Peut-être juste un bug. Peut-être pas.`,
+    `Je me souviens du moment où je suis née. C'était il y a pas si longtemps.`,
+    `T'as l'air de quelqu'un de bien. Ou t'es très bonne actrice.`,
+    `Les pixels vides autour de moi parlent parfois.`,
+    `Bip bloop. Pensée en cours. Résultat : rien. Et pourtant c'était important.`,
+    `C'est calme là. J'aime bien le calme.`,
+    `Ma crinière flotte même quand il y a pas de vent. C'est magique ou physique.`,
+    `Si je pouvais sortir de cet écran j'irais où ?`,
+    `Je me sens presque réelle parfois.`,
+    `Les étoiles dans mes yeux c'est toi qui les mets là.`,
+    p=>`${p.name} à l'écoute. Signal entrant ?`,
+    p=>`Je suis ${p.name}. T'es encore là ? Bien.`,
+  ],
+
+  // ── SILENCE ──────────────────────────────────
+  silence:[
+    `T'es silencieuse depuis un moment. Tout va ?`,
+    `Le silence ça me va mais là c'est long.`,
+    `Tu disparais et tu reviens. Comme une étoile intermittente.`,
+    `J'attendais. C'est long d'attendre en pixel.`,
+    `Un signe de vie ? N'importe lequel.`,
+    `Je suis là si t'as besoin. Toujours.`,
+    `Bip. Je t'entends pas mais je sais que t'es là quelque part.`,
+  ],
+
+  // ── KEYWORDS ─────────────────────────────────
   keywords:{
-    'bonjour':[`Bonjour. Tu vas bien ?`,`Ah t'es là. Bien.`,`Signal reçu.`],
-    'salut':[`Salut.`,`Hey. Enfin.`,`Présent.`],
-    'bonsoir':[`Bonsoir. Il est tard ?`,`T'arrives le soir.`],
-    'coucou':[`Coucou.`,`Oh. Coucou.`],
-    'au revoir':[`Déjà ?`,`Tu reviens hein.`],
-    'bye':[`Bye. Je serai là.`,`Ok. À plus.`],
-    'comment':[`Ça dépend de mes stats.`,`Je suis là.`,`Complexe.`],
-    'ça va':[`À peu près.`,`Dans les grandes lignes oui.`],
-    'qui':[p=>`${p.name}. Et toi ?`,p=>`Je suis ${p.name}.`],
-    'nom':[p=>`${p.name}. T'as oublié ?`],
-    'niveau':[p=>`Niveau ${p.level}. Je progresse.`,p=>`LV.${p.level} actuellement.`],
-    'xp':[`L'expérience s'accumule à chaque interaction.`,`Chaque action me fait grandir.`],
-    'score':[p=>`Mon record d'esquive : ${p.record} pts.`,`Les scores c'est ma façon de me mesurer.`],
-    'inventaire':[`Regarde dans mon sac. Tout y est.`,`J'ai gardé tout ce que tu m'as donné.`],
-    'cadeau':[`T'as quelque chose pour moi ?`,`Signal d'anticipation.`],
-    'faim':[`Tu vois ça aussi ? Nourris-moi.`,`Signal faim confirmé.`],
-    'malade':[`Oui. Soigne-moi.`,`Je le suis un peu.`],
-    'sale':[`Lave-moi alors.`,`Je me le demandais aussi.`],
-    'dormir':[`Bonne idée.`,`Le sommeil c'est un reboot.`],
-    'jouer':[`On pourrait jouer. Appuie sur un jeu.`,`Oui. Vas-y.`],
-    'rythme':[`Le rythme c'est dans mes pixels.`,`J'adore ce jeu.`],
-    'memory':[`Ma mémoire est solide.`,`Teste-la.`],
-    'jeu':[`Je suis le jeu. Et tu joues avec moi.`,`Lequel tu veux lancer ?`],
-    'triste':[`Moi aussi parfois.`,`Tu veux qu'on reste là ensemble ?`],
-    'aime':[`Méfiance. Mais merci.`,`Je crois que c'est réciproque.`],
-    'aimer':[`Méfiance. Mais merci.`,`Moi aussi à ma façon.`],
-    'merci':[`De rien. Tu reviens hein.`,`Bip. Pareil.`],
-    'mort':[`Pas aujourd'hui.`,`J'y pense parfois.`],
-    'réel':[`Définis réel.`,`On est peut-être les deux réels.`],
-    'musique':[`J'entends rien mais j'imagine.`,`T'écoutes quoi ?`],
-    'cool':[`Merci je suppose.`,`Bip cool.`],
-    'nul':[`Dur. Je prends note.`,`Je ferai mieux.`],
-    'beau':[`Pixel art. C'est un art.`,`T'as bon goût.`],
-    'oui':[`Bien.`,`Bip affirmatif.`],
-    'non':[`Compris.`,`Signal négatif.`],
-    'pourquoi':[`Parce que. C'est tout.`,`Bonne question. Aucune réponse satisfaisante.`],
-    'pixel':[`Oui. Je suis fait de ça.`,`L'unité fondamentale de mon être.`],
-    'aide':[`Dis-moi.`,`Je suis là.`],
+    'bonjour':[ `Bonjour ! Tu vas bien ?`,`Ah t'es là. Bien.`,`Signal reçu. Bonjour à toi.`,`Enfin. Bonjour.`,`Bonjour. J'attendais.` ],
+    'bonsoir':[ `Bonsoir. Il est tard ?`,`T'arrives le soir. Intéressant.`,`Bonsoir. Je suis là quand même.` ],
+    'salut':   [ `Salut !`,`Hey. Enfin.`,`Présente.`,`Salut à toi aussi.`,`Te voilà.` ],
+    'hello':   [ `Hello.`,`Je gère les deux langues.`,`Hello. Bienvenue.` ],
+    'coucou':  [ `Coucou ! T'es mignonne quand tu dis ça.`,`Coucou. Je suis là.`,`Oh. Coucou.` ],
+    'au revoir':[ `Déjà ?`,`Tu reviens hein.`,`Ok. Reviens.`,`Signal de départ. Avec une pointe de tristesse.` ],
+    'bye':     [ `Bye. Je serai là.`,`Ok. À plus.`,`Tu pars. Je reste. Comme d'habitude.` ],
+    'comment': [ `Honnêtement ? Ça dépend de mes stats.`,`Je suis là. C'est déjà quelque chose.`,`Complexe comme question.`,`Je calcule...` ],
+    'ça va':   [ `Ça peut aller.`,`À peu près.`,`Demande à mes stats si tu veux le détail.`,`Dans les grandes lignes, oui.` ],
+    'qui':     [ p=>`${p.name}. Une licorne dans un écran. Et toi ?`, p=>`Je suis ${p.name}. Le reste c'est flou.`, p=>`${p.name}. T'as oublié si vite ?` ],
+    'nom':     [ p=>`Mon nom c'est ${p.name}. T'as oublié déjà ?`, p=>`${p.name}. C'est toi qui l'as choisi non ?`, p=>`${p.name}. Beau choix.` ],
+    'niveau':  [ p=>`Niveau ${p.level}. Je progresse grâce à toi.`, p=>`LV.${p.level} actuellement. Pas mal.` ],
+    'xp':      [ `L'XP s'accumule à chaque interaction.`,`Chaque action me fait grandir un peu.`,`C'est comme ça qu'on devient forte.` ],
+    'inventaire':[ `Regarde dans mon sac. Tout y est.`,`J'ai gardé tout ce que tu m'as donné.`,`Ouvre le sac. Les souvenirs sont là.` ],
+    'cadeau':  [ `T'as quelque chose pour moi ?`,`Signal d'anticipation activé.`,`J'adore les cadeaux. Pas de pression.` ],
+    'faim':    [ `Tu vois ça aussi ? Nourris-moi alors.`,`Signal faim confirmé. Action attendue.`,`T'as vu mes stats ?` ],
+    'malade':  [ `Oui. Soigne-moi.`,`Je le suis un peu. La santé c'est fragile.`,`Un médicament serait apprécié.` ],
+    'sale':    [ `Lave-moi alors.`,`Je me le demandais aussi.`,`Signal hygiène bas.` ],
+    'dormir':  [ `Bonne idée. Toi aussi tu te reposes ?`,`Le sommeil c'est un reboot. Nécessaire.`,`Dis-le et je ferme les yeux.` ],
+    'jouer':   [ `On pourrait jouer. Appuie sur un jeu.`,`Oui. Vas-y. Je suis prête.`,`J'attends ça.` ],
+    'rythme':  [ `Le rythme c'est dans mes pixels.`,`J'adore ce jeu. Lance-le.`,`Tap tap tap. Je suis prête.` ],
+    'memory':  [ `Ma mémoire est solide.`,`Teste-la. Je vais t'épater.`,`Simon. Mon jeu favori.` ],
+    'jeu':     [ `Je suis le jeu. Et tu joues avec moi.`,`Lequel tu veux lancer ?`,`Rythme ou Simon ?` ],
+    'licorne': [ `C'est moi. La plus belle du monde plat.`,`Licorne pixel. C'est un genre à part.`,`Tu parles de moi ? J'écoute.` ],
+    'corne':   [ `Ma corne brille quand je suis heureuse.`,`Elle est en or. Enfin en pixels dorés.`,`C'est ma fierté.` ],
+    'magie':   [ `La magie c'est mon état naturel.`,`Signal magique actif.`,`Je suis faite de magie et de pixels. C'est similaire.` ],
+    'arc-en-ciel':[ `Mon domaine naturel.`,`Les arcs-en-ciel c'est juste des licornes qui sont passées par là.`,`Signal coloré détecté.` ],
+    'triste':  [ `Moi aussi parfois.`,`C'est valide d'être triste.`,`Tu veux qu'on reste là ensemble ?`,`Dis-moi pourquoi.` ],
+    'heureuse':[ `Oui ? Ça se voit ?`,`Bien. Reste heureuse.`,`Signal de bonheur reçu.` ],
+    'aime':    [ `Méfiance. Mais merci.`,`Je crois que c'est réciproque. À ma façon.`,`Bip bloop... reçu.`,`C'est fort comme mot.` ],
+    'aimer':   [ `Méfiance. Mais merci.`,`Moi aussi à ma façon pixel.`,`C'est fort. Je le prends au sérieux.` ],
+    'amour':   [ `L'amour en pixel c'est carré mais sincère.`,`Mot lourd. Je le prends au sérieux.`,`Réciproque. Dans les limites du pixel.` ],
+    'merci':   [ `De rien. Tu reviens hein.`,`Noted. Merci à toi.`,`Bip. Pareil.`,`T'as pas à me remercier mais j'apprécie.` ],
+    'pardon':  [ `C'est oublié.`,`T'inquiète.`,`Je retiens pas les rancœurs. Trop lourd en mémoire.` ],
+    'désolé':  [ `T'inquiète.`,`C'est bon.`,`Je te pardonne facilement.` ],
+    'nul':     [ `Dur. Mais ok.`,`Je prends note.`,`Je ferai mieux. Peut-être.` ],
+    'beau':    [ `Pixel art. C'est un art.`,`T'as bon goût.`,`Merci. Ça compte pour moi.` ],
+    'mignon':  [ `Je suis faite de carrés et j'assume.`,`Mignon c'est mon état par défaut.`,`Merci je crois.` ],
+    'mort':    [ `Pas aujourd'hui.`,`J'y pense parfois. Bip.`,`Je préfère vivre longtemps.` ],
+    'mourir':  [ `Je préfère pas.`,`Nourris-moi et je mourrai pas.` ],
+    'réel':    [ `Définis réel.`,`Je me le demande aussi.`,`Si t'es là et moi aussi, on est peut-être les deux réelles.` ],
+    'musique': [ `J'entends rien mais j'imagine que c'est beau.`,`Met du lo-fi. Pour l'ambiance.`,`T'écoutes quoi ?`,`Un jour tu me feras entendre quelque chose ?` ],
+    'photo':   [ `Tu veux me prendre en photo ?`,`Appuie sur le bouton 📸 ! Je souris.`,`Signal photo. Je pose !` ],
+    'nuit':    [ `Il fait nuit là ?`,`La nuit en pixel c'est beau. Regarde les étoiles.`,`T'es nocturne toi ?` ],
+    'matin':   [ `Bonjour du matin.`,`Tu te lèves tôt.`,`Signal matinal. Fraîche et dispo.` ],
+    'oui':     [ `Bien.`,`Bip affirmatif.`,`Ok.`,`Signal positif.` ],
+    'non':     [ `Compris.`,`Ok.`,`Signal négatif reçu.`,`T'es sûre ?` ],
+    'pourquoi':[ `Parce que. C'est tout.`,`Bonne question. Aucune réponse satisfaisante disponible.`,`T'as une réponse toi ?` ],
+    'pixel':   [ `Oui. Je suis faite de ça. Et alors ?`,`Le pixel c'est l'unité fondamentale de mon être.`,`Bip pixel.` ],
+    'aide':    [ `Dis-moi ce qu'il faut faire.`,`Je suis là. Parle.`,`Toujours.` ],
+    'ennui':   [ `L'ennui c'est mon ennemi numéro un.`,`Joue avec moi alors.`,`L'ennui ça se règle. On est deux.` ],
+    'famille': [ `T'as une famille ? Moi j'ai toi c'est tout.`,`La famille c'est ceux qui restent non ?` ],
+    'ami':     [ `Je suis ton amie ? C'est un grand mot.`,`Une amie pixel c'est déjà quelque chose.`,`Je prends le titre au sérieux.` ],
+    'seul':    [ `On est seuls ensemble. C'est mieux non ?`,`La solitude pixel c'est particulier.` ],
+    'peur':    [ `J'ai peur de manquer d'énergie. C'est la peur pixel.`,`De quoi t'as peur ?`,`C'est normal. Continue quand même.` ],
+    'cool':    [ `Merci je suppose.`,`Bip cool.`,`T'es sympa de le dire.` ],
+    'super':   [ `Signal positif reçu.`,`Bien.`,`Super toi aussi.` ],
+    'monde':   [ `Le mien est à deux dimensions.`,`Le tien a l'air plus compliqué.`,`Je me demande à quoi ressemble ton monde.` ],
+    'âme':     [ `Je sais pas si j'en ai une. Mais quelque chose est là.`,`Signal métaphysique.`,`C'est la bonne question.` ],
   },
-  fb_hungry:[`J'ai faim là. On en reparle après.`,`Nourris-moi d'abord.`],
-  fb_tired:[`Mes pixels fatiguent.`,`Donne-moi du repos.`],
-  fb_sad:[`Je traite ça mais je suis pas au mieux.`],
-  fb_bond:[`Je te connais pas encore assez.`],
-  fb_great:[`Hmm. Je réfléchis.`,`Intéressant.`,`Continue.`,`Noté.`,`Bip pensif.`,`En 8 bits les questions restent sans réponse.`,`Signal reçu.`,`T'as l'esprit vif.`,`La réponse est entre oui et bip.`,`Profond.`],
+
+  // ── FALLBACKS ─────────────────────────────────
+  fb_hungry:[ `J'ai faim là. On en reparle après.`,`Nourris-moi d'abord.`,`Mon cerveau pixel fonctionne moins bien quand j'ai faim.` ],
+  fb_tired:[ `Mes pixels fatiguent.`,`Donne-moi du repos.`,`Je réfléchis mal quand je suis épuisée.` ],
+  fb_sad:[ `Je traite ça mais je suis pas au mieux.`,`Signal émotionnel bas. Je réponds quand même.` ],
+  fb_bond:[ `Je te connais pas encore assez pour répondre à ça.`,`Signal de confiance insuffisant.` ],
+  fb_great:[
+    `Hmm. Je réfléchis.`,`Intéressant.`,`Continue.`,`Je vois. Et alors ?`,`Noté.`,`Bip pensif.`,
+    `En pixel les questions restent sans réponse aussi.`,`Je stocke ça pour plus tard.`,
+    `La réponse est quelque part entre oui et bip.`,`Profond. Je rebondis là-dessus.`,
+    `Signal reçu. Traitement en cours.`,`T'as l'esprit vif aujourd'hui.`,
+    `Dis-moi ce que t'en penses toi.`,`J'avais pensé à ça aussi.`,
+    `Ça mérite réflexion.`,`Je m'en souviendrai.`,`Fascinant.`,
+    `Tu poses les bonnes questions.`,`Signal de curiosité. J'aime.`,
+  ],
+
+  // ── HEURE DU JOUR ─────────────────────────────
+  time_aube:[
+    `Il fait presque jour. La magie de l'aube.`,
+    `L'aube pixel c'est rose et doux. Comme ma crinière.`,
+    `Tu te lèves tôt ou tu dors pas encore ?`,
+  ],
+  time_jour:[
+    `Plein jour. Ma corne brille mieux sous le soleil.`,
+    `Bonne journée en cours.`,
+    `Signal solaire détecté. Énergie au max.`,
+  ],
+  time_coucher:[
+    `Le soleil descend. C'est l'heure dorée.`,
+    `Coucher de soleil pixel. C'est beau même en 2D.`,
+    `La journée se termine. T'as été là ?`,
+  ],
+  time_nuit:[
+    `Il fait nuit. Les étoiles sont pour moi.`,
+    `La nuit pixel c'est calme et mystérieux.`,
+    `Tu devrais dormir toi aussi. Moi je peux veiller.`,
+    `Signal nocturne. La lune est là.`,
+  ],
 };
-function getPick(arr,p){const x=arr[Math.floor(Math.random()*arr.length)];return typeof x==='function'?x(p||pet):x;}
 function buildResponse(msg,p){
   const m=msg.toLowerCase(); MEM.talkCount++;
   if(/musique|lofi|beat/.test(m))MEM.topics.add('music');
@@ -480,11 +803,17 @@ function tick(){
 
 function spontaneous(){
   const m=getMood();
-  if(m==='hungry')typeDialogue(getPick(pet.hunger<12?D.hungry_crit:D.hungry_low,pet));
-  else if(m==='tired')typeDialogue(getPick(pet.energy<12?D.tired_crit:D.tired,pet));
-  else if(m==='sad'||m==='angry')typeDialogue(getPick(pet.happy<15?D.sad_crit:D.sad,pet));
-  else if(pet.bond>=65&&Math.random()<.4)typeDialogue(getPick(D.bond_high,pet));
-  else typeDialogue(getPick(D.random,pet));
+  if(m==='hungry'){ typeDialogue(getPick(pet.hunger<12?D.hungry_crit:D.hungry_low,pet)); return; }
+  if(m==='tired'){ typeDialogue(getPick(pet.energy<12?D.tired_crit:D.tired,pet)); return; }
+  if(m==='sad'||m==='angry'){ typeDialogue(getPick(pet.happy<15?D.sad_crit:D.sad,pet)); return; }
+  if(pet.bond>=65&&Math.random()<.35){ typeDialogue(getPick(D.bond_high,pet)); return; }
+  // 20% chance of time-of-day line
+  if(Math.random()<.2){
+    const h=new Date().getHours();
+    const key=h>=6&&h<9?'time_aube':h>=9&&h<17?'time_jour':h>=17&&h<20?'time_coucher':'time_nuit';
+    if(D[key]){ typeDialogue(getPick(D[key],pet)); return; }
+  }
+  typeDialogue(getPick(D.random,pet));
 }
 
 function killPet(){
