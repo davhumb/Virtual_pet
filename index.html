@@ -146,6 +146,7 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
       <button onclick="takePhoto()" style="background:rgba(255,224,102,.1);border:2px solid #ffe066;border-radius:7px;color:#ffe066;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent">📸</button>
       <button onclick="toggleJournal()" style="background:rgba(180,140,255,.1);border:2px solid #c084fc;border-radius:7px;color:#c084fc;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent">📔</button>
       <button onclick="cycleBg()" id="bg-btn" style="background:rgba(255,157,226,.1);border:2px solid #ff9de2;border-radius:7px;color:#ff9de2;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent">🎨</button>
+      <button onclick="confirmReset()" style="background:rgba(255,34,68,.08);border:2px solid #ff2244;border-radius:7px;color:#ff2244;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent" title="Reset">🗑️</button>
       <div class="pet-info" id="pet-header-info">---<br>JOUR 0</div>
     </div>
   </div>
@@ -215,6 +216,15 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
     
     <div id="journal-title" style="font-size:6px;color:#c084fc;margin-bottom:8px;text-shadow:0 0 6px #c084fc">📔 JOURNAL</div>
     <div id="journal-entries" style="font-size:7px;color:#d4c0ff;line-height:2"></div>
+  </div>
+  <div style="text-align:center;font-size:5px;color:rgba(255,157,226,0.25);font-family:'Press Start 2P',monospace;margin-top:10px;letter-spacing:1px">CELLULOÏD SCALPEL PRODUCTION</div>
+  <div id="reset-modal" style="display:none;position:fixed;inset:0;background:rgba(10,1,24,0.95);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px">
+    <div style="font-size:8px;color:#ff2244;text-align:center;line-height:2;text-shadow:0 0 12px #ff2244">⚠️ RESET TOTAL<br>TOUT SERA PERDU</div>
+    <div style="font-size:7px;color:#888;text-align:center;line-height:2">Progression, journal,<br>inventaire, licorne.</div>
+    <div style="display:flex;gap:12px">
+      <button onclick="doReset()" style="background:rgba(255,34,68,.15);border:2px solid #ff2244;border-radius:10px;color:#ff2244;font-family:'Press Start 2P',monospace;font-size:7px;padding:12px 18px;cursor:pointer">💀 RESET</button>
+      <button onclick="closeReset()" style="background:rgba(255,157,226,.1);border:2px solid #ff9de2;border-radius:10px;color:#ff9de2;font-family:'Press Start 2P',monospace;font-size:7px;padding:12px 18px;cursor:pointer">✖ ANNULER</button>
+    </div>
   </div>
   <div class="talk-area" id="talk-area">
     <input class="talk-input" id="talk-input" placeholder="écris quelque chose..." maxlength="100" spellcheck="false">
@@ -3558,6 +3568,26 @@ function drawBgCozy(t){
 // Init
 loadBg();
 document.getElementById('bg-btn').textContent = BG_LABELS[currentBg].split(' ')[0];
+
+
+// ══════════════════════════════════════════════════════
+//  RESET COMPLET
+// ══════════════════════════════════════════════════════
+function confirmReset(){
+  const m=document.getElementById('reset-modal');
+  if(m) m.style.display='flex';
+}
+function closeReset(){
+  const m=document.getElementById('reset-modal');
+  if(m) m.style.display='none';
+}
+function doReset(){
+  // Clear all localStorage keys
+  const keys=['pixelpet_v5','pixelpet_heritage','pixelpet_player','pixelpet_journal','pixelpet_bg'];
+  keys.forEach(k=>{ try{localStorage.removeItem(k);}catch(e){} });
+  // Hard reload
+  location.reload();
+}
 
 </script>
 </body>
