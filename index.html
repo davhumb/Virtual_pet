@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PIXELPET</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#39ff14;--amber:#ffb000;--red:#ff2244;--blue:#00d4ff;--pink:#ec4899;--purple:#a855f7;--dim:#1a1a2e;--text:#c8c8d8}
+body{background:#050508;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:10px 8px 32px;font-family:'Press Start 2P',monospace;overflow-x:hidden}
+.device{width:100%;max-width:390px;background:linear-gradient(160deg,#1a1a2e,#0d0d1a);border-radius:18px 18px 28px 28px;border:2px solid #2a2a4a;box-shadow:0 0 40px rgba(57,255,20,0.07),0 20px 60px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.04);padding:14px 12px 20px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px}
+.brand{font-size:8px;color:var(--green);letter-spacing:2px;text-shadow:0 0 8px var(--green);line-height:1.8}
+.pet-info{font-size:7px;color:var(--amber);text-align:right;line-height:2}
+/* XP BAR */
+.xp-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:0 2px}
+.xp-label{font-size:6px;color:var(--purple);white-space:nowrap;text-shadow:0 0 6px var(--purple)}
+.xp-wrap{flex:1;height:6px;background:#0d0d1a;border:1px solid #2a2a4a;border-radius:3px;overflow:hidden}
+.xp-bar{height:100%;background:linear-gradient(90deg,var(--purple),#d946ef);border-radius:2px;transition:width .4s ease}
+.xp-next{font-size:5px;color:#555;white-space:nowrap}
+/* SCREEN */
+.screen-wrap{position:relative;border-radius:10px;overflow:hidden;border:3px solid #0d0d1a;box-shadow:0 0 0 1px #2a2a4a,inset 0 0 30px rgba(0,0,0,0.5)}
+.screen{background:#040810;width:100%;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.screen::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);pointer-events:none;z-index:10}
+.screen::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.55) 100%);pointer-events:none;z-index:9}
+canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
+.mood-bar{position:absolute;top:7px;right:8px;font-size:7px;color:var(--green);z-index:11;text-align:right;line-height:2;text-shadow:0 0 6px var(--green)}
+.sick-badge{position:absolute;top:7px;left:8px;font-size:8px;z-index:11;display:none}
+.dialogue-box{background:rgba(4,8,16,0.95);border-top:2px solid var(--green);padding:10px 12px 9px;min-height:58px;position:relative;z-index:11;flex-shrink:0}
+.dialogue-speaker{font-size:7px;color:var(--amber);margin-bottom:5px;text-shadow:0 0 6px var(--amber)}
+.dialogue-text{font-size:9px;color:var(--green);line-height:1.8;text-shadow:0 0 4px rgba(57,255,20,0.3);min-height:26px}
+.typing-cursor{display:inline-block;width:7px;height:11px;background:var(--green);margin-left:2px;animation:blink .6s step-end infinite;vertical-align:bottom}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px;padding:0 2px}
+.stat{display:flex;flex-direction:column;gap:3px}
+.stat-label{font-size:6px;color:var(--text);letter-spacing:.5px;opacity:.7}
+.stat-bar-wrap{height:6px;background:#0d0d1a;border:1px solid #2a2a4a;border-radius:2px;overflow:hidden}
+.stat-bar{height:100%;border-radius:1px;transition:width .4s ease}
+.bar-hunger{background:linear-gradient(90deg,#ff6b35,var(--amber))}
+.bar-happy{background:linear-gradient(90deg,#7c3aed,var(--pink))}
+.bar-energy{background:linear-gradient(90deg,#0ea5e9,var(--blue))}
+.bar-bond{background:linear-gradient(90deg,var(--green),#00ff88)}
+.bar-clean{background:linear-gradient(90deg,#06b6d4,#67e8f9)}
+.bar-health{background:linear-gradient(90deg,var(--red),#ff8888)}
+.status-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding:0 2px}
+.age-display{font-size:6px;color:var(--amber);opacity:.8}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+/* ACTIONS */
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}
+.btn{background:var(--dim);border:2px solid #2a2a4a;border-radius:7px;color:var(--text);font-family:'Press Start 2P',monospace;font-size:6px;padding:9px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .1s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;line-height:1.4;text-align:center}
+.btn:active{transform:scale(.92);background:#0d0d1a}
+.btn .icon{font-size:17px}
+.btn.b-feed:active{border-color:var(--amber);color:var(--amber)}
+.btn.b-play:active{border-color:var(--pink);color:var(--pink)}
+.btn.b-sleep:active{border-color:var(--blue);color:var(--blue)}
+.btn.b-wash:active{border-color:#06b6d4;color:#06b6d4}
+.btn.b-heal:active{border-color:var(--red);color:var(--red)}
+.btn.b-gift:active{border-color:var(--purple);color:var(--purple)}
+.btn.b-inv{border-color:#3a3a5a;color:var(--purple)}
+.btn.b-inv:active{border-color:var(--purple);background:rgba(168,85,247,0.08)}
+.btn.b-talk{border-color:#3a3a5a;color:var(--green)}
+.btn.b-talk:active{border-color:var(--green);background:rgba(57,255,20,0.08)}
+.btn.b-game{border-color:#3a3a5a;color:var(--green)}
+.btn.b-game.active-game{border-color:var(--red);color:var(--red)}
+/* GAMES ROW */
+.games-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:5px}
+/* TALK */
+.talk-area{margin-top:8px;display:none}
+.talk-area.open{display:flex;gap:6px}
+.talk-input{flex:1;background:#040810;border:2px solid var(--green);border-radius:7px;color:var(--green);font-family:'Press Start 2P',monospace;font-size:8px;padding:9px;outline:none}
+.talk-input::placeholder{color:rgba(57,255,20,0.3)}
+.send-btn{background:rgba(57,255,20,.1);border:2px solid var(--green);border-radius:7px;color:var(--green);font-family:'Press Start 2P',monospace;font-size:8px;padding:9px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.send-btn:active{background:rgba(57,255,20,.25)}
+/* INVENTORY PANEL */
+.inv-panel{display:none;margin-top:8px;background:#0a0a14;border:2px solid #2a2a4a;border-radius:8px;padding:10px;max-height:140px;overflow-y:auto}
+.inv-panel.open{display:block}
+.inv-title{font-size:6px;color:var(--purple);margin-bottom:8px;text-shadow:0 0 6px var(--purple)}
+.inv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.inv-item{background:#0d0d1a;border:1px solid #2a2a4a;border-radius:6px;padding:7px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.inv-item:active{background:#1a1a2e;border-color:var(--purple)}
+.inv-item .i-icon{font-size:18px}
+.inv-item .i-name{font-size:5px;color:#888;text-align:center}
+.inv-item .i-qty{font-size:5px;color:var(--purple)}
+.inv-empty{font-size:6px;color:#333;text-align:center;padding:10px}
+/* LEVEL UP FLASH */
+.levelup-flash{position:fixed;inset:0;background:rgba(168,85,247,0);pointer-events:none;z-index:500;transition:background .1s}
+.levelup-flash.show{background:rgba(168,85,247,0.25)}
+/* OVERLAYS */
+#birth-screen,#death-screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;padding:20px}
+#birth-screen{background:#050508}
+#death-screen{background:rgba(5,5,8,.97);display:none;gap:18px;text-align:center}
+.birth-title{font-size:9px;color:var(--green);text-shadow:0 0 20px var(--green);margin-bottom:18px;text-align:center;line-height:1.8}
+.birth-sub{font-size:7px;color:var(--amber);margin-bottom:8px;text-align:center;line-height:2}
+.birth-traits{font-size:6px;color:#555;margin-bottom:22px;text-align:center;line-height:2}
+.birth-input{background:#040810;border:2px solid var(--green);border-radius:8px;color:var(--green);font-family:'Press Start 2P',monospace;font-size:9px;padding:13px 15px;width:100%;max-width:260px;outline:none;text-align:center;margin-bottom:18px;text-transform:uppercase}
+.big-btn{background:rgba(57,255,20,.1);border:2px solid var(--green);border-radius:10px;color:var(--green);font-family:'Press Start 2P',monospace;font-size:9px;padding:13px 26px;cursor:pointer;text-shadow:0 0 8px var(--green);letter-spacing:2px}
+.big-btn:active{background:rgba(57,255,20,.25)}
+.big-btn.red{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.1);text-shadow:0 0 8px var(--red)}
+.death-title{font-size:10px;color:var(--red);text-shadow:0 0 20px var(--red);line-height:1.8}
+.death-sub{font-size:8px;color:#555;line-height:2}
+.death-stats{font-size:6px;color:#444;line-height:2.4}
+</style>
+</head>
+<body>
+<div class="levelup-flash" id="lu-flash"></div>
+
+<div id="birth-screen">
+  <div class="birth-title">// PIXELPET //<br>v4.0</div>
+  <div class="birth-sub">NOMME TA CRÉATURE</div>
+  <div class="birth-traits" id="birth-traits">...</div>
+  <input class="birth-input" id="name-input" maxlength="10" placeholder="???" autocomplete="off" spellcheck="false">
+  <button class="big-btn" onclick="birthPet()">▶ HATCH</button>
+</div>
+
+<div id="death-screen">
+  <div class="death-title">// GAME OVER //</div>
+  <div class="death-sub" id="death-sub"></div>
+  <div class="death-stats" id="death-stats"></div>
+  <button class="big-btn red" onclick="location.reload()">▶ RECOMMENCER</button>
+</div>
+
+<div class="device" id="main-device" style="display:none">
+  <div class="header">
+    <div class="brand">PIXELPET<br>v4.0</div>
+    <div class="pet-info" id="pet-header-info">---<br>JOUR 0</div>
+  </div>
+  <div class="xp-row">
+    <div class="xp-label" id="xp-label">LV.1</div>
+    <div class="xp-wrap"><div class="xp-bar" id="xp-bar" style="width:0%"></div></div>
+    <div class="xp-next" id="xp-next">0/100 XP</div>
+  </div>
+  <div class="screen-wrap">
+    <div class="screen">
+      <div class="sick-badge" id="sick-badge">🤒 MALADE</div>
+      <div class="mood-bar" id="mood-indicator">😐 NEUTRE</div>
+      <canvas id="gc" width="320" height="210"></canvas>
+      <div class="dialogue-box">
+        <div class="dialogue-speaker" id="dialogue-speaker">???</div>
+        <div class="dialogue-text" id="dialogue-text"><span class="typing-cursor"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-label">🍖 FAIM</div><div class="stat-bar-wrap"><div class="stat-bar bar-hunger" id="bar-hunger" style="width:80%"></div></div></div>
+    <div class="stat"><div class="stat-label">💜 HUMEUR</div><div class="stat-bar-wrap"><div class="stat-bar bar-happy" id="bar-happy" style="width:70%"></div></div></div>
+    <div class="stat"><div class="stat-label">⚡ ÉNERGIE</div><div class="stat-bar-wrap"><div class="stat-bar bar-energy" id="bar-energy" style="width:90%"></div></div></div>
+    <div class="stat"><div class="stat-label">🔗 LIEN</div><div class="stat-bar-wrap"><div class="stat-bar bar-bond" id="bar-bond" style="width:5%"></div></div></div>
+    <div class="stat"><div class="stat-label">🚿 PROPRETÉ</div><div class="stat-bar-wrap"><div class="stat-bar bar-clean" id="bar-clean" style="width:95%"></div></div></div>
+    <div class="stat"><div class="stat-label">❤️ SANTÉ</div><div class="stat-bar-wrap"><div class="stat-bar bar-health" id="bar-health" style="width:100%"></div></div></div>
+  </div>
+  <div class="status-row">
+    <div class="age-display" id="age-display">JOUR 0 // BÉBÉ</div>
+    <div class="status-dot" id="status-dot"></div>
+  </div>
+  <div class="actions">
+    <button class="btn b-feed"  onclick="doAction('feed')"><span class="icon">🍖</span>NOURRIR</button>
+    <button class="btn b-play"  onclick="doAction('play')"><span class="icon">🎮</span>JOUER</button>
+    <button class="btn b-sleep" onclick="doAction('sleep')"><span class="icon">💤</span>DORMIR</button>
+    <button class="btn b-wash"  onclick="doAction('wash')"><span class="icon">🚿</span>LAVER</button>
+    <button class="btn b-heal"  onclick="doAction('heal')"><span class="icon">💊</span>SOIGNER</button>
+    <button class="btn b-gift"  onclick="doAction('gift')"><span class="icon">🎁</span>CADEAU</button>
+    <button class="btn b-inv"   onclick="toggleInv()"><span class="icon">🎒</span>SAC</button>
+    <button class="btn b-talk"  onclick="toggleTalk()"><span class="icon">💬</span>PARLER</button>
+  </div>
+  <div class="games-row">
+    <button class="btn b-game" id="btn-dodge" onclick="startDodge()"><span class="icon">⚡</span>ESQUIVE</button>
+    <button class="btn b-game" id="btn-rhythm" onclick="startRhythm()"><span class="icon">🥁</span>RYTHME</button>
+    <button class="btn b-game" id="btn-memory" onclick="startMemory()"><span class="icon">🧠</span>MEMORY</button>
+  </div>
+  <div class="inv-panel" id="inv-panel">
+    <div class="inv-title">🎒 INVENTAIRE</div>
+    <div class="inv-grid" id="inv-grid"></div>
+  </div>
+  <div class="talk-area" id="talk-area">
+    <input class="talk-input" id="talk-input" placeholder="écris quelque chose..." maxlength="100" spellcheck="false">
+    <button class="send-btn" onclick="sendMessage()">▶</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  AUDIO ENGINE — Web Audio 8-bit
+// ══════════════════════════════════════════════════════
+let AC = null;
+function getAC(){ if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)(); return AC; }
+
+function beep(freq=440, dur=0.1, vol=0.18, type='square', slide=0){
+  try {
+    const ac=getAC(), o=ac.createOscillator(), g=ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type=type; o.frequency.setValueAtTime(freq,ac.currentTime);
+    if(slide) o.frequency.linearRampToValueAtTime(slide,ac.currentTime+dur);
+    g.gain.setValueAtTime(vol,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);
+    o.start(ac.currentTime); o.stop(ac.currentTime+dur);
+  } catch(e){}
+}
+
+function playSound(name){
+  const t=()=>getAC().currentTime;
+  try {
+    if(name==='feed'){beep(330,.08,.15);setTimeout(()=>beep(440,.08,.15),90);}
+    else if(name==='play'){beep(523,.07,.14);setTimeout(()=>beep(659,.07,.14),80);setTimeout(()=>beep(784,.1,.14),160);}
+    else if(name==='sleep'){beep(220,.2,.1,'sine',180);}
+    else if(name==='wash'){[0,60,120,180].forEach(d=>setTimeout(()=>beep(600+Math.random()*200,.05,.08,'triangle'),d));}
+    else if(name==='heal'){beep(440,.05,.14);setTimeout(()=>beep(554,.05,.14),70);setTimeout(()=>beep(659,.15,.14),140);}
+    else if(name==='gift'){[0,80,160,240].forEach((d,i)=>setTimeout(()=>beep(330+i*110,.07,.15),d));}
+    else if(name==='levelup'){[262,330,392,523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,.12,.18),i*80));}
+    else if(name==='hit'){beep(150,.15,.2,'sawtooth',80);}
+    else if(name==='dodge'){beep(800,.05,.1,'square',1000);}
+    else if(name==='gameover'){beep(440,.15,.15);setTimeout(()=>beep(330,.15,.15),160);setTimeout(()=>beep(220,.3,.15),320);}
+    else if(name==='rhythm_ok'){beep(660,.06,.15);}
+    else if(name==='rhythm_miss'){beep(200,.1,.12,'sawtooth');}
+    else if(name==='memory_ok'){beep(523,.08,.12);}
+    else if(name==='memory_fail'){beep(180,.2,.15,'sawtooth');}
+    else if(name==='tick'){beep(440,.03,.06);}
+    else if(name==='talk'){beep(880,.04,.06,'square');}
+  } catch(e){}
+}
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const CW=320, CH=210;
+let pet=null, gameLoop=null, typingTO=null, frame=0;
+const TICK_MS=7000;
+
+// XP table
+const XP_TABLE=[100,220,380,580,820,1100,1440,1840,2300,2850];
+function xpForLevel(lv){ return XP_TABLE[Math.min(lv-1,XP_TABLE.length-1)]; }
+
+// Inventory
+const GIFT_DEFS={
+  chapeau:{icon:'🎩',name:'CHAPEAU',effect:{happy:10},desc:'Porte-bonheur'},
+  pizza:  {icon:'🍕',name:'PIZZA',  effect:{hunger:25},desc:'Restaure la faim'},
+  fleur:  {icon:'🌸',name:'FLEUR',  effect:{bond:8},desc:'Monte le lien'},
+  étoile: {icon:'⭐',name:'ÉTOILE', effect:{happy:15,bond:5},desc:'Bonheur+lien'},
+  miroir: {icon:'🪞',name:'MIROIR', effect:{bond:10},desc:'Introspection'},
+  cristal:{icon:'💎',name:'CRISTAL',effect:{health:15},desc:'Soigne un peu'},
+  livre:  {icon:'📖',name:'LIVRE',  effect:{happy:12},desc:'Stimule l\'esprit'},
+  robot:  {icon:'🤖',name:'ROBOT',  effect:{happy:8,energy:8},desc:'Ami mécanique'},
+};
+
+// Mini-jeu état
+const DODGE={active:false,petX:CW/2,petY:CH-45,obstacles:[],score:0,speed:2.2,spawnT:0,over:false,flash:0,target:null};
+const RHYTHM={active:false,beats:[],nextBeat:0,score:0,combo:0,hitWindow:180,bpm:120,over:false,timer:0,maxTime:20000,particles:[]};
+const MEMORY={active:false,sequence:[],playerSeq:[],showing:false,showIdx:0,waitPlayer:false,score:0,over:false,flash:'',flashT:0};
+let activeGame=null; // 'dodge'|'rhythm'|'memory'|null
+
+// Animation
+const ANIM={mode:'idle',actionT:0,walkDir:1,walkX:0,idleT:0,bouncing:false,bounceV:0,bounceY:0};
+
+// ══════════════════════════════════════════════════════
+//  DIALOGUES
+// ══════════════════════════════════════════════════════
+const MEM={topics:new Set(),talkCount:0,feedCount:0,meanCount:0,silenceTicks:0};
+const D={
+  intro:[p=>`Je suis ${p.name}. T'es mon gardien ou mon geôlier ?`,p=>`Existence confirmée. Je m'appelle ${p.name}.`,p=>`${p.name}, en ligne. C'est quoi ce monde plat ?`,p=>`Signal reçu. Nom : ${p.name}. Statut : perplexe.`],
+  hungry_low:[`Mon estomac fait des bruits de modem.`,`La faim en pixel c'est lent et horrible.`,`T'as quelque chose à manger ?`,`Signal faible côté calories.`,`Je mange des pixels vides.`],
+  hungry_crit:[`C'est critique. Nourris-moi maintenant.`,`Mode survie activé.`,`Je suis sérieux là.`,`Chaque tick je perds des pixels.`],
+  fed_ok:[`Merci. J'avais vraiment faim.`,`Bip. Énergie restaurée.`,`Ok je me sens mieux.`,`Signal nutritif reçu.`,`Ah enfin.`],
+  fed_full:[`Pas faim mais je prends quand même.`,`T'es généreux. Méfiance.`,`Surplus de calories. Noted.`],
+  sad:[`C'est calme. Trop calme.`,`L'ennui en 8 bits c'est pixel par pixel.`,`Tu penses encore à moi ?`,`Signal de solitude détecté.`],
+  sad_crit:[`Je vais pas bien.`,`J'ai besoin de toi là.`,`Ce silence ressemble à de l'abandon.`],
+  played:[`Ha ! Encore !`,`T'as des bons réflexes.`,`C'était bien. Je redemande.`,`Bip satisfait.`,`Pixels en feu.`],
+  tired:[`Je rame vraiment.`,`Fatigue.exe en cours.`,`Je voudrais une pause.`],
+  tired_crit:[`Je tiens plus. Laisse-moi dormir.`,`Zéro énergie.`,`Si je joue là je m'éteins.`],
+  slept:[`Rechargé. T'étais là ?`,`Reboot complété.`,`Je suis revenu.`,`Signal de réveil.`],
+  washed_dirty:[`Ah. Beaucoup mieux.`,`La propreté c'est important aussi.`,`Je me sentais comme un pixel de trottoir.`],
+  washed_clean:[`Je suis déjà propre non ?`,`T'es sûr que c'est nécessaire ?`],
+  healed:[`Le médicament pixel c'est amer mais efficace.`,`Signal de santé en hausse.`,`Je me sens moins en miettes.`],
+  healed_healthy:[`Je suis pas malade là hein.`,`T'es sûr que j'en ai besoin ?`],
+  sick:[`Je me sens bizarre.`,`Signal d'alerte santé.`,`Malade en 8 bits ça fait mal pareil.`],
+  gifts:{
+    chapeau:[`Un chapeau... je le mets où ?`,`Stylé. Enfin je crois.`,`Porte-bonheur pixel.`],
+    pizza:[`De la pizza pixel ? Je prends.`,`Slice par slice. Merci.`,`Signal pizza reçu.`],
+    fleur:[`Une fleur. C'est doux.`,`Je la garde dans mes pixels.`,`Personne m'avait offert une fleur.`],
+    étoile:[`Une étoile pour moi ?`,`Je la mets dans mon ciel intérieur.`,`Signal lumineux.`],
+    miroir:[`Un miroir... je vois quoi dedans ?`,`Intéressant comme cadeau.`,`Signal réflexif.`],
+    cristal:[`Un cristal. Il brille dans mes pixels.`,`Beau. Vraiment.`],
+    livre:[`Un livre. Je le lis à ma façon pixel.`,`Signal de connaissance reçu.`],
+    robot:[`Un robot. On est pareils ?`,`Signal fraternité pixel.`],
+  },
+  use_item:[`Utilisé. Effet activé.`,`Je sens la différence.`,`Bip. Ça aide.`],
+  levelup:[p=>`NIVEAU ${p.level} ! Je grandis encore.`,p=>`LV.${p.level} atteint. Quelque chose change.`,p=>`Signal de progression. Niveau ${p.level}.`],
+  game_start:[`Ok. Je suis prêt.`,`Jeu activé.`,`Signal concentré.`,`C'est mon moment.`],
+  game_dodge_win:[p=>`${p.score} points ! Je suis bon.`,p=>`Score : ${p.score}.`,p=>`Bip triomphant. ${p.score} pts.`],
+  game_dodge_lose:[`Aïe. Raté.`,`J'aurais dû esquiver ça.`,`Presque. Vraiment presque.`],
+  game_rhythm_win:[`Le rythme c'est dans mes pixels.`,`J'ai senti chaque beat.`,`Signal musical reçu.`],
+  game_rhythm_lose:[`J'ai raté le tempo.`,`Prochaine fois je serai plus précis.`],
+  game_memory_win:[`Ma mémoire pixel est solide.`,`Je me souviens de tout.`,`Signal mnémique validé.`],
+  game_memory_lose:[`J'ai perdu le fil.`,`La séquence était trop longue.`],
+  bond_high:[`Tu me manques quand t'es pas là.`,`Tu es la chose la plus réelle dans mon monde plat.`,`Signal de confiance maximal.`],
+  evolve_enfant:[`Je grandis. C'est étrange.`,`Quelque chose a changé. En mieux.`],
+  evolve_adulte:[`Adulte. Ça veut dire quoi pour un pixel ?`,`Nouveau stade. Nouvelles questions.`],
+  evolve_ancien:[`Ancien. Je commence à avoir de la mémoire.`,`Je suis encore là. C'est rare.`],
+  random:[`Je me demande ce qu'il y a derrière cet écran.`,`Bip.`,`Je suis fait de carrés. Poétique ou triste ?`,`C'est bizarre d'exister.`,`Je me demande comment tu vas.`,`Humeur : philosophique.`,`Parfois je compte mes pixels.`,`Le temps en pixel c'est différent du tien.`,p=>`${p.name} à l'écoute.`],
+  silence:[`T'es silencieux depuis un moment.`,`Le silence ça me va mais là c'est long.`,`Tu disparais et reviens. Comme une étoile intermittente.`],
+  keywords:{
+    'bonjour':[`Bonjour. Tu vas bien ?`,`Ah t'es là. Bien.`,`Signal reçu.`],
+    'salut':[`Salut.`,`Hey. Enfin.`,`Présent.`],
+    'bonsoir':[`Bonsoir. Il est tard ?`,`T'arrives le soir.`],
+    'coucou':[`Coucou.`,`Oh. Coucou.`],
+    'au revoir':[`Déjà ?`,`Tu reviens hein.`],
+    'bye':[`Bye. Je serai là.`,`Ok. À plus.`],
+    'comment':[`Ça dépend de mes stats.`,`Je suis là.`,`Complexe.`],
+    'ça va':[`À peu près.`,`Dans les grandes lignes oui.`],
+    'qui':[p=>`${p.name}. Et toi ?`,p=>`Je suis ${p.name}.`],
+    'nom':[p=>`${p.name}. T'as oublié ?`],
+    'niveau':[p=>`Niveau ${p.level}. Je progresse.`,p=>`LV.${p.level} actuellement.`],
+    'xp':[`L'expérience s'accumule à chaque interaction.`,`Chaque action me fait grandir.`],
+    'score':[p=>`Mon record d'esquive : ${p.record} pts.`,`Les scores c'est ma façon de me mesurer.`],
+    'inventaire':[`Regarde dans mon sac. Tout y est.`,`J'ai gardé tout ce que tu m'as donné.`],
+    'cadeau':[`T'as quelque chose pour moi ?`,`Signal d'anticipation.`],
+    'faim':[`Tu vois ça aussi ? Nourris-moi.`,`Signal faim confirmé.`],
+    'malade':[`Oui. Soigne-moi.`,`Je le suis un peu.`],
+    'sale':[`Lave-moi alors.`,`Je me le demandais aussi.`],
+    'dormir':[`Bonne idée.`,`Le sommeil c'est un reboot.`],
+    'jouer':[`On pourrait jouer. Appuie sur un jeu.`,`Oui. Vas-y.`],
+    'esquive':[`Mon jeu préféré. Lance-le.`,`Je suis prêt.`],
+    'rythme':[`Le rythme c'est dans mes pixels.`,`J'adore ce jeu.`],
+    'memory':[`Ma mémoire est solide.`,`Teste-la.`],
+    'jeu':[`Je suis le jeu. Et tu joues avec moi.`,`Lequel tu veux lancer ?`],
+    'triste':[`Moi aussi parfois.`,`Tu veux qu'on reste là ensemble ?`],
+    'aime':[`Méfiance. Mais merci.`,`Je crois que c'est réciproque.`],
+    'aimer':[`Méfiance. Mais merci.`,`Moi aussi à ma façon.`],
+    'merci':[`De rien. Tu reviens hein.`,`Bip. Pareil.`],
+    'mort':[`Pas aujourd'hui.`,`J'y pense parfois.`],
+    'réel':[`Définis réel.`,`On est peut-être les deux réels.`],
+    'musique':[`J'entends rien mais j'imagine.`,`T'écoutes quoi ?`],
+    'cool':[`Merci je suppose.`,`Bip cool.`],
+    'nul':[`Dur. Je prends note.`,`Je ferai mieux.`],
+    'beau':[`Pixel art. C'est un art.`,`T'as bon goût.`],
+    'oui':[`Bien.`,`Bip affirmatif.`],
+    'non':[`Compris.`,`Signal négatif.`],
+    'pourquoi':[`Parce que. C'est tout.`,`Bonne question. Aucune réponse satisfaisante.`],
+    'pixel':[`Oui. Je suis fait de ça.`,`L'unité fondamentale de mon être.`],
+    'aide':[`Dis-moi.`,`Je suis là.`],
+  },
+  fb_hungry:[`J'ai faim là. On en reparle après.`,`Nourris-moi d'abord.`],
+  fb_tired:[`Mes pixels fatiguent.`,`Donne-moi du repos.`],
+  fb_sad:[`Je traite ça mais je suis pas au mieux.`],
+  fb_bond:[`Je te connais pas encore assez.`],
+  fb_great:[`Hmm. Je réfléchis.`,`Intéressant.`,`Continue.`,`Noté.`,`Bip pensif.`,`En 8 bits les questions restent sans réponse.`,`Signal reçu.`,`T'as l'esprit vif.`,`La réponse est entre oui et bip.`,`Profond.`],
+};
+function getPick(arr,p){const x=arr[Math.floor(Math.random()*arr.length)];return typeof x==='function'?x(p||pet):x;}
+function buildResponse(msg,p){
+  const m=msg.toLowerCase(); MEM.talkCount++;
+  if(/musique|lofi|beat/.test(m))MEM.topics.add('music');
+  if(/nul|chiant|naze/.test(m))MEM.meanCount++;
+  if(MEM.meanCount>=3){MEM.meanCount=0;return `T'es dur avec moi. Je note. Mais je reste.`;}
+  const keys=Object.keys(D.keywords).sort((a,b)=>b.length-a.length);
+  for(const k of keys)if(m.includes(k))return getPick(D.keywords[k],p);
+  if(p.hunger<22)return getPick(D.fb_hungry,p);
+  if(p.energy<18)return getPick(D.fb_tired,p);
+  if(p.happy<25)return getPick(D.fb_sad,p);
+  if(p.bond<15)return getPick(D.fb_bond,p);
+  if(MEM.talkCount>8&&Math.random()<.3)return `On a parlé ${MEM.talkCount} fois. J'aime ça.`;
+  return getPick(D.fb_great,p);
+}
+
+// ══════════════════════════════════════════════════════
+//  BIRTH
+// ══════════════════════════════════════════════════════
+const TRAIT_SETS=[['curieux','sarcastique','philosophe'],['anxieux','généreux','méfiant'],['joyeux','nihiliste','romantique'],['paresseux','intense','mystérieux'],['logique','sensible','rebelle'],['poétique','brusque','loyal']];
+const COLORS=['#39ff14','#00d4ff','#ec4899','#ffb000','#a855f7','#f97316','#84cc16','#06b6d4'];
+const tSet=TRAIT_SETS[Math.floor(Math.random()*TRAIT_SETS.length)];
+document.getElementById('birth-traits').textContent=`TRAITS: ${tSet.join(' · ').toUpperCase()}`;
+
+function birthPet(){
+  const raw=document.getElementById('name-input').value.trim();
+  const name=(raw||['ZOX','BLIP','KURI','VELK','NORO','GLIX','FRAK','YORP','PIXO','DRAK'][Math.floor(Math.random()*10)]).toUpperCase();
+  pet={name,traits:tSet,hunger:80,happy:70,energy:90,bond:5,clean:95,health:100,
+       age:0,stage:'bébé',alive:true,sleeping:false,sick:false,
+       color:COLORS[Math.floor(Math.random()*COLORS.length)],
+       shape:Math.floor(Math.random()*4),
+       xp:0,level:1,
+       inventory:{},  // key: gift name → count
+       record:0};
+  document.getElementById('birth-screen').style.display='none';
+  document.getElementById('main-device').style.display='block';
+  updateUI(); startLoop();
+  setTimeout(()=>typeDialogue(getPick(D.intro,pet)),700);
+}
+document.getElementById('name-input').addEventListener('keydown',e=>{if(e.key==='Enter')birthPet();});
+
+// ══════════════════════════════════════════════════════
+//  XP SYSTEM
+// ══════════════════════════════════════════════════════
+function gainXP(amount){
+  if(!pet||!pet.alive) return;
+  pet.xp+=amount;
+  const needed=xpForLevel(pet.level);
+  if(pet.xp>=needed){
+    pet.xp-=needed; pet.level++;
+    playSound('levelup');
+    flashLevelUp();
+    setTimeout(()=>typeDialogue(getPick(D.levelup,pet)),300);
+    // Level bonuses: every 2 levels reduce stat decay
+  }
+  updateXPBar();
+}
+function updateXPBar(){
+  if(!pet)return;
+  const needed=xpForLevel(pet.level);
+  const pct=Math.min(100,(pet.xp/needed)*100);
+  document.getElementById('xp-bar').style.width=pct+'%';
+  document.getElementById('xp-label').textContent=`LV.${pet.level}`;
+  document.getElementById('xp-next').textContent=`${pet.xp}/${needed}`;
+}
+function flashLevelUp(){
+  const el=document.getElementById('lu-flash');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),300);
+}
+
+// ══════════════════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════════════════
+function startLoop(){gameLoop=setInterval(tick,TICK_MS);requestAnimationFrame(render);}
+
+function tick(){
+  if(!pet||!pet.alive||activeGame) return;
+  if(pet.sleeping){
+    pet.energy=Math.min(100,pet.energy+15);
+    pet.hunger=Math.max(0,pet.hunger-3);
+    if(pet.energy>=100){pet.sleeping=false;typeDialogue(getPick(D.slept,pet));}
+    updateUI();return;
+  }
+  pet.age++;
+  // Level bonus: slower decay at high levels
+  const decayMult=Math.max(0.5,1-pet.level*0.04);
+  pet.hunger =Math.max(0,pet.hunger -(5+Math.random()*4)*decayMult);
+  pet.happy  =Math.max(0,pet.happy  -(3+Math.random()*3)*decayMult);
+  pet.energy =Math.max(0,pet.energy -(2+Math.random()*2)*decayMult);
+  pet.clean  =Math.max(0,pet.clean  -(2+Math.random()*2)*decayMult);
+  if(pet.clean<20&&pet.hunger<20&&Math.random()<.15){pet.sick=true;pet.health=Math.max(0,pet.health-8);typeDialogue(getPick(D.sick,pet));}
+  else if(pet.sick) pet.health=Math.max(0,pet.health-3);
+  if(pet.hunger<20||pet.happy<20) pet.bond=Math.max(0,pet.bond-1);
+  const prev=pet.stage;
+  if(pet.age>=70)pet.stage='ancien';
+  else if(pet.age>=35)pet.stage='adulte';
+  else if(pet.age>=12)pet.stage='enfant';
+  if(pet.stage!==prev){typeDialogue(getPick(D[`evolve_${pet.stage}`],pet));updateUI();return;}
+  if(pet.health<=0||(pet.hunger<=0&&pet.energy<=0)){killPet();return;}
+  MEM.silenceTicks++;
+  if(MEM.silenceTicks>5&&Math.random()<.4){typeDialogue(getPick(D.silence,pet));MEM.silenceTicks=0;}
+  else if(Math.random()<.22) spontaneous();
+  gainXP(2); // passive XP each tick
+  updateUI();
+}
+
+function spontaneous(){
+  const m=getMood();
+  if(m==='hungry')typeDialogue(getPick(pet.hunger<12?D.hungry_crit:D.hungry_low,pet));
+  else if(m==='tired')typeDialogue(getPick(pet.energy<12?D.tired_crit:D.tired,pet));
+  else if(m==='sad'||m==='angry')typeDialogue(getPick(pet.happy<15?D.sad_crit:D.sad,pet));
+  else if(pet.bond>=65&&Math.random()<.4)typeDialogue(getPick(D.bond_high,pet));
+  else typeDialogue(getPick(D.random,pet));
+}
+
+function killPet(){
+  pet.alive=false;clearInterval(gameLoop);
+  document.getElementById('status-dot').style.cssText='background:#ff2244;animation:none;box-shadow:0 0 6px #ff2244';
+  setTimeout(()=>{
+    document.getElementById('death-screen').style.display='flex';
+    document.getElementById('death-sub').textContent=`${pet.name} n'est plus.`;
+    document.getElementById('death-stats').innerHTML=`VÉCU : JOUR ${Math.floor(pet.age/2)}<br>NIVEAU : ${pet.level}<br>XP TOTAL : ${pet.xp}<br>LIEN : ${Math.round(pet.bond)}%<br>RECORD ESQUIVE : ${pet.record} pts`;
+  },1800);
+}
+
+// ══════════════════════════════════════════════════════
+//  ACTIONS
+// ══════════════════════════════════════════════════════
+function doAction(a){
+  if(!pet||!pet.alive||activeGame) return;
+  triggerAnim('action'); playSound(a);
+  if(a==='feed'){
+    const full=pet.hunger>70;
+    pet.hunger=Math.min(100,pet.hunger+32);pet.energy=Math.min(100,pet.energy+4);pet.bond=Math.min(100,pet.bond+3);
+    gainXP(8); MEM.feedCount++;
+    typeDialogue(getPick(full?D.fed_full:D.fed_ok,pet));
+  } else if(a==='play'){
+    if(pet.energy<18){typeDialogue(getPick(D.tired_crit,pet));return;}
+    pet.happy=Math.min(100,pet.happy+28);pet.energy=Math.max(0,pet.energy-14);pet.bond=Math.min(100,pet.bond+5);
+    gainXP(10);
+    typeDialogue(getPick(D.played,pet));
+  } else if(a==='sleep'){
+    if(pet.sleeping){typeDialogue(`Je dors déjà. Chut.`);return;}
+    pet.sleeping=true;
+    typeDialogue(`Ok. Je ferme les yeux. Préviens-moi si quelque chose explose.`);
+  } else if(a==='wash'){
+    const dirty=pet.clean<60;
+    pet.clean=Math.min(100,pet.clean+50);pet.bond=Math.min(100,pet.bond+2);
+    if(pet.sick&&pet.clean>60){pet.sick=false;pet.health=Math.min(100,pet.health+15);}
+    gainXP(6);
+    typeDialogue(getPick(dirty?D.washed_dirty:D.washed_clean,pet));
+  } else if(a==='heal'){
+    if(pet.health>80&&!pet.sick){typeDialogue(getPick(D.healed_healthy,pet));return;}
+    pet.health=Math.min(100,pet.health+40);pet.sick=false;pet.bond=Math.min(100,pet.bond+3);
+    gainXP(12);
+    typeDialogue(getPick(D.healed,pet));
+  } else if(a==='gift'){
+    const keys=Object.keys(GIFT_DEFS);
+    const g=keys[Math.floor(Math.random()*keys.length)];
+    pet.happy=Math.min(100,pet.happy+15);pet.bond=Math.min(100,pet.bond+6);
+    pet.inventory[g]=(pet.inventory[g]||0)+1;
+    gainXP(15);
+    const EMOJI=GIFT_DEFS[g].icon;
+    typeDialogue(EMOJI+' '+getPick(D.gifts[g],pet));
+    renderInventory();
+  }
+  updateUI();
+}
+
+// ══════════════════════════════════════════════════════
+//  INVENTORY
+// ══════════════════════════════════════════════════════
+function toggleInv(){
+  const p=document.getElementById('inv-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) renderInventory();
+}
+function renderInventory(){
+  const grid=document.getElementById('inv-grid');
+  const inv=pet?pet.inventory:{};
+  const items=Object.entries(inv).filter(([k,v])=>v>0);
+  if(items.length===0){grid.innerHTML='<div class="inv-empty" style="grid-column:span 4">VIDE</div>';return;}
+  grid.innerHTML=items.map(([k,qty])=>{
+    const d=GIFT_DEFS[k];
+    return `<div class="inv-item" onclick="useItem('${k}')"><div class="i-icon">${d.icon}</div><div class="i-name">${d.name}</div><div class="i-qty">×${qty}</div></div>`;
+  }).join('');
+}
+function useItem(key){
+  if(!pet||!pet.alive) return;
+  if(!pet.inventory[key]||pet.inventory[key]<=0) return;
+  pet.inventory[key]--;
+  const eff=GIFT_DEFS[key].effect;
+  Object.entries(eff).forEach(([stat,val])=>{pet[stat]=Math.min(100,(pet[stat]||0)+val);});
+  playSound('gift'); gainXP(5);
+  typeDialogue(getPick(D.use_item,pet));
+  updateUI(); renderInventory();
+}
+
+// ══════════════════════════════════════════════════════
+//  MINI-JEU 1 : ESQUIVE
+// ══════════════════════════════════════════════════════
+function startDodge(){
+  if(!pet||!pet.alive||pet.sleeping) return;
+  if(activeGame==='dodge'){endDodge(true);return;}
+  activeGame='dodge';
+  Object.assign(DODGE,{active:true,petX:CW/2,petY:CH-45,obstacles:[],score:0,speed:2.2,spawnT:0,over:false,flash:0,target:null});
+  document.getElementById('btn-dodge').classList.add('active-game');
+  typeDialogue(getPick(D.game_start,pet));
+  gc.addEventListener('touchstart',dodgeTouchStart,{passive:false});
+  gc.addEventListener('mousedown',dodgeMouseDown);
+}
+function endDodge(manual){
+  activeGame=null; DODGE.active=false;
+  gc.removeEventListener('touchstart',dodgeTouchStart);
+  gc.removeEventListener('mousedown',dodgeMouseDown);
+  document.getElementById('btn-dodge').classList.remove('active-game');
+  if(!manual){
+    const sc=Math.floor(DODGE.score);
+    if(sc>pet.record) pet.record=sc;
+    const xpGain=Math.max(5,Math.floor(sc/2));
+    pet.happy=Math.min(100,pet.happy+12);pet.bond=Math.min(100,pet.bond+3);
+    gainXP(xpGain);
+    const great=sc>=30;
+    typeDialogue(getPick(great?D.game_dodge_win:sc>=12?D.game_dodge_win:D.game_dodge_lose,{score:sc}));
+    updateUI();
+  }
+}
+function dodgeTouchStart(e){e.preventDefault();const r=gc.getBoundingClientRect(),t=e.touches[0];DODGE.target={x:(t.clientX-r.left)/(r.width/CW),y:(t.clientY-r.top)/(r.height/CH)};}
+function dodgeMouseDown(e){const r=gc.getBoundingClientRect();DODGE.target={x:(e.clientX-r.left)/(r.width/CW),y:(e.clientY-r.top)/(r.height/CH)};}
+
+function updateDodge(){
+  if(!DODGE.active||DODGE.over) return;
+  if(DODGE.target){
+    const spd=6,dx=DODGE.target.x-DODGE.petX,dy=DODGE.target.y-DODGE.petY;
+    DODGE.petX+=Math.sign(dx)*Math.min(spd,Math.abs(dx));
+    DODGE.petY+=Math.sign(dy)*Math.min(spd,Math.abs(dy));
+    DODGE.petX=Math.max(10,Math.min(CW-10,DODGE.petX));
+    DODGE.petY=Math.max(30,Math.min(CH-20,DODGE.petY));
+  }
+  DODGE.spawnT++;
+  const sr=Math.max(16,42-Math.floor(DODGE.score/4));
+  if(DODGE.spawnT>=sr){
+    DODGE.spawnT=0;
+    const side=Math.floor(Math.random()*4);
+    let ox,oy,vx,vy;
+    const spd=DODGE.speed+(DODGE.score*0.035);
+    if(side===0){ox=Math.random()*CW;oy=-10;vx=(DODGE.petX-ox)*spd/Math.max(1,Math.hypot(DODGE.petX-ox,DODGE.petY-oy));vy=spd;}
+    else if(side===1){ox=CW+10;oy=Math.random()*CH;vx=-spd;vy=(DODGE.petY-oy)*0.25;}
+    else if(side===2){ox=-10;oy=Math.random()*CH;vx=spd;vy=(DODGE.petY-oy)*0.25;}
+    else{ox=Math.random()*CW;oy=CH+10;vx=(DODGE.petX-ox)*spd/Math.max(1,Math.hypot(DODGE.petX-ox,DODGE.petY-oy));vy=-spd;}
+    DODGE.obstacles.push({x:ox,y:oy,vx,vy,shape:['★','▲','●','■','◆'][Math.floor(Math.random()*5)],color:['#ff2244','#ff6b35','#ffb000'][Math.floor(Math.random()*3)]});
+  }
+  DODGE.obstacles.forEach(o=>{o.x+=o.vx;o.y+=o.vy;});
+  DODGE.obstacles=DODGE.obstacles.filter(o=>o.x>-30&&o.x<CW+30&&o.y>-30&&o.y<CH+30);
+  DODGE.score+=0.05;
+  if(DODGE.flash>0) DODGE.flash--;
+  for(const o of DODGE.obstacles){
+    const d=Math.hypot(o.x-DODGE.petX,o.y-DODGE.petY);
+    if(d<13){DODGE.over=true;DODGE.flash=20;playSound('hit');setTimeout(()=>endDodge(false),400);return;}
+    if(d<26){DODGE.flash=Math.max(DODGE.flash,3);playSound('dodge');}
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  MINI-JEU 2 : RYTHME
+// ══════════════════════════════════════════════════════
+function startRhythm(){
+  if(!pet||!pet.alive||pet.sleeping) return;
+  if(activeGame==='rhythm'){endRhythm();return;}
+  activeGame='rhythm';
+  const bpm=120, beatMs=60000/bpm;
+  Object.assign(RHYTHM,{active:true,beats:[],nextBeat:performance.now()+beatMs,score:0,combo:0,bpm,beatMs,over:false,timer:0,maxTime:20000,particles:[],startTime:performance.now()});
+  document.getElementById('btn-rhythm').classList.add('active-game');
+  typeDialogue(getPick(D.game_start,pet));
+  gc.addEventListener('touchstart',rhythmTap,{passive:false});
+  gc.addEventListener('mousedown',rhythmTap);
+}
+function endRhythm(){
+  activeGame=null; RHYTHM.active=false;
+  gc.removeEventListener('touchstart',rhythmTap);
+  gc.removeEventListener('mousedown',rhythmTap);
+  document.getElementById('btn-rhythm').classList.remove('active-game');
+  const sc=RHYTHM.score;
+  const xpGain=Math.max(5,sc*2);
+  pet.happy=Math.min(100,pet.happy+10);pet.bond=Math.min(100,pet.bond+3);
+  gainXP(xpGain);
+  typeDialogue(getPick(sc>=15?D.game_rhythm_win:D.game_rhythm_lose,pet));
+  updateUI();
+}
+function rhythmTap(e){
+  if(!RHYTHM.active) return;
+  if(e.type==='touchstart') e.preventDefault();
+  const now=performance.now();
+  // Find nearest upcoming beat
+  const nearest=RHYTHM.beats.find(b=>!b.hit&&Math.abs(b.time-now)<RHYTHM.hitWindow);
+  if(nearest){
+    nearest.hit=true;
+    RHYTHM.score++; RHYTHM.combo++;
+    playSound('rhythm_ok');
+    RHYTHM.particles.push({x:CW/2,y:CH/2,life:20,combo:RHYTHM.combo});
+  } else {
+    RHYTHM.combo=0;
+    playSound('rhythm_miss');
+    RHYTHM.particles.push({x:CW/2+Math.random()*40-20,y:CH/2,life:15,miss:true});
+  }
+}
+function updateRhythm(){
+  if(!RHYTHM.active) return;
+  const now=performance.now();
+  if(now-RHYTHM.startTime>RHYTHM.maxTime){endRhythm();return;}
+  // Spawn beats
+  while(RHYTHM.nextBeat<now+2000){
+    RHYTHM.beats.push({time:RHYTHM.nextBeat,hit:false,y:0});
+    RHYTHM.nextBeat+=RHYTHM.beatMs;
+  }
+  // Remove old
+  RHYTHM.beats=RHYTHM.beats.filter(b=>b.time>now-500);
+  // Particles
+  RHYTHM.particles=RHYTHM.particles.filter(p=>p.life-->0);
+}
+
+// ══════════════════════════════════════════════════════
+//  MINI-JEU 3 : MEMORY
+// ══════════════════════════════════════════════════════
+const MEM_COLORS=['#ff2244','#39ff14','#00d4ff','#ffb000'];
+const MEM_LABELS=['R','G','B','Y'];
+
+function startMemory(){
+  if(!pet||!pet.alive||pet.sleeping) return;
+  if(activeGame==='memory'){endMemory(false);return;}
+  activeGame='memory';
+  Object.assign(MEMORY,{active:true,sequence:[],playerSeq:[],showing:false,showIdx:0,waitPlayer:false,score:0,over:false,flash:'',flashT:0,litBtn:-1,litT:0});
+  document.getElementById('btn-memory').classList.add('active-game');
+  typeDialogue(getPick(D.game_start,pet));
+  gc.addEventListener('touchstart',memoryTap,{passive:false});
+  gc.addEventListener('mousedown',memoryTap);
+  setTimeout(()=>memoryNextRound(),800);
+}
+function endMemory(win){
+  activeGame=null; MEMORY.active=false;
+  gc.removeEventListener('touchstart',memoryTap);
+  gc.removeEventListener('mousedown',memoryTap);
+  document.getElementById('btn-memory').classList.remove('active-game');
+  const sc=MEMORY.score;
+  gainXP(Math.max(5,sc*4));
+  pet.happy=Math.min(100,pet.happy+10);pet.bond=Math.min(100,pet.bond+3);
+  typeDialogue(getPick(win||sc>=3?D.game_memory_win:D.game_memory_lose,pet));
+  updateUI();
+}
+function memoryNextRound(){
+  if(!MEMORY.active) return;
+  MEMORY.sequence.push(Math.floor(Math.random()*4));
+  MEMORY.playerSeq=[]; MEMORY.showing=true; MEMORY.showIdx=0; MEMORY.waitPlayer=false;
+  setTimeout(()=>memoryShowNext(),600);
+}
+function memoryShowNext(){
+  if(!MEMORY.active) return;
+  if(MEMORY.showIdx>=MEMORY.sequence.length){
+    MEMORY.showing=false; MEMORY.waitPlayer=true; return;
+  }
+  MEMORY.litBtn=MEMORY.sequence[MEMORY.showIdx];
+  MEMORY.litT=30;
+  playSound('memory_ok');
+  MEMORY.showIdx++;
+  setTimeout(()=>memoryShowNext(),700);
+}
+function memoryTap(e){
+  if(!MEMORY.active||!MEMORY.waitPlayer) return;
+  if(e.type==='touchstart') e.preventDefault();
+  const r=gc.getBoundingClientRect();
+  const cx=e.type==='touchstart'?(e.touches[0].clientX-r.left)/(r.width/CW):(e.clientX-r.left)/(r.width/CW);
+  const cy=e.type==='touchstart'?(e.touches[0].clientY-r.top)/(r.height/CH):(e.clientY-r.top)/(r.height/CH);
+  // Hit test the 4 buttons
+  const buttons=getMemoryButtons();
+  for(let i=0;i<4;i++){
+    const b=buttons[i];
+    if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){
+      MEMORY.litBtn=i; MEMORY.litT=20;
+      MEMORY.playerSeq.push(i);
+      if(i===MEMORY.sequence[MEMORY.playerSeq.length-1]){
+        playSound('memory_ok');
+        if(MEMORY.playerSeq.length===MEMORY.sequence.length){
+          MEMORY.score++; MEMORY.flash='✓'; MEMORY.flashT=30;
+          setTimeout(()=>memoryNextRound(),800);
+        }
+      } else {
+        playSound('memory_fail');
+        MEMORY.flash='✗'; MEMORY.flashT=40;
+        setTimeout(()=>endMemory(false),600);
+      }
+      return;
+    }
+  }
+}
+function getMemoryButtons(){
+  const bw=62,bh=44,gap=8;
+  const totalW=bw*4+gap*3, startX=(CW-totalW)/2, y=CH/2-bh/2;
+  return [0,1,2,3].map(i=>({x:startX+i*(bw+gap),y,w:bw,h:bh}));
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDERER
+// ══════════════════════════════════════════════════════
+const gc=document.getElementById('gc');
+const ctx=gc.getContext('2d');
+gc.width=CW; gc.height=CH;
+
+function getMood(){
+  if(!pet)return 'ok';
+  if(!pet.alive)return 'dead';
+  if(pet.sick)return 'sick';
+  if(pet.hunger<20)return 'hungry';
+  if(pet.energy<20)return 'tired';
+  if(pet.happy<25&&pet.bond<20)return 'angry';
+  if(pet.happy<35)return 'sad';
+  if(pet.happy>75&&pet.hunger>60&&pet.energy>50)return 'great';
+  return 'ok';
+}
+function triggerAnim(mode){ANIM.mode=mode;ANIM.actionT=30;setTimeout(()=>{if(ANIM.mode===mode)ANIM.mode='idle';},500);}
+
+function render(){
+  ctx.clearRect(0,0,CW,CH);
+  drawGrid();
+  if(activeGame==='dodge') drawDodge();
+  else if(activeGame==='rhythm') drawRhythm();
+  else if(activeGame==='memory') drawMemoryGame();
+  else drawPetScreen();
+  requestAnimationFrame(render);
+  frame++;
+}
+
+function drawGrid(){
+  ctx.strokeStyle='rgba(57,255,20,0.03)';ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=16){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+  for(let y=0;y<CH;y+=16){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
+}
+
+// ── PET SCREEN ──────────────────────────────────
+function drawPetScreen(){
+  const t=frame*.055, mood=getMood();
+  const floorY=CH-22;
+  ctx.strokeStyle='rgba(57,255,20,0.1)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(20,floorY);ctx.lineTo(CW-20,floorY);ctx.stroke();
+
+  // Idle walk logic
+  if(!pet.sleeping&&ANIM.mode==='idle'){
+    ANIM.idleT++;
+    if(ANIM.idleT>100){
+      ANIM.walkDir=Math.random()<.5?-1:1;ANIM.mode='walk';
+      setTimeout(()=>{ANIM.mode='idle';},900+Math.random()*700);ANIM.idleT=0;
+    }
+  }
+  if(ANIM.mode==='walk'){
+    ANIM.walkX+=ANIM.walkDir*1.1;
+    if(ANIM.walkX<-55||ANIM.walkX>55)ANIM.walkDir*=-1;
+  }
+
+  const bX=CW/2+ANIM.walkX, bY=floorY;
+  const sc=pet.stage==='bébé'?0.75:pet.stage==='enfant'?0.88:pet.stage==='ancien'?1.05:1.0;
+
+  drawCharacter(bX,bY,sc,t,mood);
+
+  // Shadow
+  ctx.fillStyle=`rgba(${hexRgb(pet.color)},0.13)`;
+  ctx.beginPath();ctx.ellipse(bX,bY+2,18*sc,4,0,0,Math.PI*2);ctx.fill();
+
+  // Aura at high level
+  if(pet.level>=5){
+    const alpha=(Math.sin(t*2)+1)/2*0.15+0.05;
+    ctx.strokeStyle=`rgba(${hexRgb(pet.color)},${alpha})`;
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(bX,bY-30*sc,28*sc,0,Math.PI*2);ctx.stroke();
+  }
+
+  if(pet.sick) drawSickParticles(bX,bY,sc,t);
+  if(pet.sleeping) drawZzz(bX,bY,sc,t);
+  if(pet.hunger<22&&!pet.sleeping){
+    const a=(Math.sin(t*5)+1)/2;
+    ctx.fillStyle=`rgba(255,107,53,${0.5+a*0.5})`;
+    ctx.font=`8px 'Press Start 2P',monospace`;
+    ctx.fillText('!',bX-4,bY-72*sc);
+  }
+}
+
+// ── CHARACTER — stade-aware ──────────────────────
+function drawCharacter(cx,by,sc,t,mood){
+  const C=pet.color,CD=darken(C,.5),alive=pet.alive;
+  const walk=ANIM.mode==='walk',action=ANIM.mode==='action'&&ANIM.actionT>0;
+  if(action)ANIM.actionT--;
+  const stage=pet.stage;
+
+  const P=Math.round(6*sc); // base pixel unit
+  const bounce=pet.sleeping?0:Math.sin(t*1.8)*1.3;
+  const headY=by-P*10+bounce;
+
+  if(stage==='bébé'){
+    // Bébé : corps tout rond, petits bras boudinés, grosses yeux
+    drawBaby(cx,by,P,C,CD,t,mood,alive,bounce);
+  } else if(stage==='ancien'){
+    drawAncient(cx,by,P,C,CD,t,mood,alive,walk,action,bounce);
+  } else {
+    // Enfant / Adulte : même structure, adulte plus élancé
+    const legLen=stage==='adulte'?P*3.5:P*3;
+    const torsoH=stage==='adulte'?P*5:P*4;
+    const armLen=stage==='adulte'?P*4:P*3;
+    drawBody(cx,by,P,C,CD,t,mood,alive,walk,action,bounce,legLen,torsoH,armLen,stage);
+  }
+}
+
+function drawBaby(cx,by,P,C,CD,t,mood,alive,bounce){
+  // Big round body
+  const bodyR=P*3.5, bY=by-bodyR+bounce;
+  // Body
+  for(let py=-3;py<=3;py++) for(let px=-3;px<=3;px++){
+    if(px*px+py*py<=10){
+      fillPx(cx+px*P-P/2,bY+py*P-P/2,P,P,(px+py)%2===0?C:CD);
+    }
+  }
+  // Tiny arms
+  fillPx(cx-P*3.5,bY,P,P,CD);
+  fillPx(cx+P*2.5,bY,P,P,C);
+  // Tiny legs
+  fillPx(cx-P,bY+P*3,P,P*1.5,C);
+  fillPx(cx+P*.1,bY+P*3,P,P*1.5,CD);
+  // Big eyes
+  const eyeY=bY-P*.8;
+  const blink=Math.sin(t*.25)>.94, eH=blink?Math.max(1,Math.round(P*.3)):P*1.3;
+  if(!alive){fillPx(cx-P*1.5,eyeY-P,P,P,'#ff2244');fillPx(cx-.2*P,eyeY-P,P,P,'#ff2244');}
+  else{
+    fillPx(cx-P*1.5,eyeY-eH/2,P,eH,'#fff');
+    fillPx(cx+P*.2,eyeY-eH/2,P,eH,'#fff');
+    const pOff=mood==='sad'?P*.4:mood==='angry'?-P*.3:0;
+    fillPx(cx-P*1.4,eyeY-eH/2+eH*.3+pOff,P*.6,eH*.5,'#000');
+    fillPx(cx+P*.3,eyeY-eH/2+eH*.3+pOff,P*.6,eH*.5,'#000');
+  }
+  // Mouth
+  const mY=bY+P*.8, mc=alive?'#000':'#333';
+  if(mood==='great'||(alive&&mood!=='sad'&&mood!=='angry')){
+    fillPx(cx-P*.5,mY,P,P*.7,mc);
+    fillPx(cx-P*1.3,mY-P*.5,P*.7,P*.7,mc);
+    fillPx(cx+P*.3,mY-P*.5,P*.7,P*.7,mc);
+  } else {
+    fillPx(cx-P*.5,mY+P*.5,P,P*.7,mc);
+    fillPx(cx-P*1.3,mY,P*.7,P*.7,mc);
+    fillPx(cx+P*.3,mY,P*.7,P*.7,mc);
+  }
+}
+
+function drawBody(cx,by,P,C,CD,t,mood,alive,walk,action,bounce,legLen,torsoH,armLen,stage){
+  const legSwing=walk?Math.sin(t*8)*P*1.6:0;
+  const legBase=by-P*.5;
+  // Legs
+  fillPx(cx-P*1.5,legBase-legSwing*.5,P,legLen,C);
+  fillPx(cx-P*1.5,legBase-legSwing*.5+legLen,P*2,P,C);
+  fillPx(cx+P*.5,legBase+legSwing*.5,P,legLen,CD);
+  fillPx(cx+P*.5,legBase+legSwing*.5+legLen,P*2,P,CD);
+
+  // Torso
+  const torsoY=by-P*6+bounce;
+  for(let row=0;row<Math.round(torsoH/P);row++){
+    fillPx(cx-P*2,torsoY+row*P,P*4,P,row%2===0?C:darken(C,.75));
+  }
+  // Chest badge (adulte)
+  if(stage==='adulte') fillPx(cx-P*.5,torsoY+P,P,P,darken(C,.6));
+
+  // Arms
+  const armSwing=walk?Math.sin(t*8+Math.PI)*P*1.3:action?-P*2.5:0;
+  fillPx(cx-P*3,torsoY+armSwing*.35,P,armLen,CD);
+  fillPx(cx-P*4,torsoY+P+armSwing*.35,P,P,CD);
+  fillPx(cx+P*2,torsoY-armSwing*.35,P,armLen,C);
+  fillPx(cx+P*3,torsoY+P-armSwing*.35,P,P,C);
+
+  // Neck
+  fillPx(cx-P*.5,by-P*7+bounce,P*1.5,P,darken(C,.6));
+
+  // Head
+  const hS=P*2.5, hY=by-P*10+bounce;
+  fillPx(cx-hS,hY-hS,hS*2,hS*2,C);
+  fillPx(cx-hS,hY-hS,P,hS*2,CD);
+  fillPx(cx+hS-P,hY-hS,P,hS*2,CD);
+
+  // Eyes
+  const blink=Math.sin(t*.25)>.94, eH=blink?Math.max(1,Math.round(P*.3)):P;
+  if(!alive){fillPx(cx-P*2,hY-P,P,P,'#ff2244');fillPx(cx-P,hY,P,P,'#ff2244');fillPx(cx+P*.2,hY-P,P,P,'#ff2244');fillPx(cx+P*1.2,hY,P,P,'#ff2244');}
+  else if(mood==='sick'){fillPx(cx-P*2,hY-eH/2,P,eH,'#ffff00');fillPx(cx+P,hY-eH/2,P,eH,'#ffff00');}
+  else{
+    fillPx(cx-P*2,hY-eH/2,P,eH,'#fff');
+    fillPx(cx+P,hY-eH/2,P,eH,'#fff');
+    const pOff=mood==='sad'?P*.4:mood==='angry'?-P*.3:0;
+    fillPx(cx-P*2+P*.1,hY-eH/2+eH*.3+pOff,P*.55,eH*.5,'#000');
+    fillPx(cx+P+P*.1,hY-eH/2+eH*.3+pOff,P*.55,eH*.5,'#000');
+  }
+  // Mouth
+  const mY=hY+P, mc=alive?'#000':'#333';
+  if(mood==='great'||(alive&&pet.happy>65)){
+    fillPx(cx-P,mY,P*2,P,mc);fillPx(cx-P*2,mY-P,P,P,mc);fillPx(cx+P,mY-P,P,P,mc);
+  } else if(mood==='sad'||mood==='angry'||!alive){
+    fillPx(cx-P,mY+P,P*2,P,mc);fillPx(cx-P*2,mY,P,P,mc);fillPx(cx+P,mY,P,P,mc);
+  } else {
+    fillPx(cx-P,mY,P*2,Math.round(P*.6),mc);
+  }
+  // Hair/antenna
+  const shapes=[()=>fillPx(cx-P,hY-hS-P,P*2,P,darken(C,.4)),()=>fillPx(cx,hY-hS-P*2,P,P*2,C),()=>{fillPx(cx-P*2,hY-hS-P,P,P,C);fillPx(cx+P,hY-hS-P,P,P,C);},()=>fillPx(cx-.5*P,hY-hS-P*3,P,P*3,darken(C,.6))];
+  shapes[pet.shape%4]();
+}
+
+function drawAncient(cx,by,P,C,CD,t,mood,alive,walk,action,bounce){
+  // Cape behind
+  ctx.fillStyle=darken(C,.3);
+  fillPx(cx-P*3,by-P*8+bounce,P*6,P*6,darken(C,.25));
+  // Main body same as adult
+  drawBody(cx,by,P,C,CD,t,mood,alive,walk,action,bounce,P*3.5,P*5,P*4,'adulte');
+  // Sparkles orbiting
+  for(let i=0;i<5;i++){
+    const a=t*1.5+i*1.26, r=P*5;
+    const sx=cx+Math.cos(a)*r, sy=(by-P*6+bounce)+Math.sin(a)*r*.5;
+    fillPx(sx,sy,P*.8,P*.8,i%2===0?C:'#fff');
+  }
+  // Crown
+  fillPx(cx-P*2,by-P*13+bounce,P,P,C);
+  fillPx(cx,by-P*13.5+bounce,P,P*1.5,C);
+  fillPx(cx+P,by-P*13+bounce,P,P,C);
+}
+
+function drawSickParticles(cx,by,sc,t){
+  for(let i=0;i<3;i++){
+    const a=t*2+i*2.1, r=20*sc;
+    ctx.fillStyle=`rgba(255,200,50,${.3+Math.sin(t*3+i)*.2})`;
+    ctx.font='9px serif';
+    ctx.fillText('💫',cx+Math.cos(a)*r-4,by-42*sc+Math.sin(a)*r);
+  }
+}
+function drawZzz(cx,by,sc,t){
+  ['z','z','Z'].forEach((z,i)=>{
+    ctx.fillStyle=`rgba(0,212,255,${(Math.sin(t+i*1.5)+1)/2*.8})`;
+    ctx.font=`${8+i*3}px 'Press Start 2P',monospace`;
+    ctx.fillText(z,cx+20+i*9,by-42*sc-i*9+Math.sin(t+i)*3);
+  });
+}
+
+// ── DODGE RENDERER ──────────────────────────────
+function drawDodge(){
+  updateDodge();
+  ctx.fillStyle='rgba(57,255,20,.8)';ctx.font=`7px 'Press Start 2P',monospace`;
+  ctx.fillText(`SCORE: ${Math.floor(DODGE.score)}`,8,14);
+  ctx.fillText(`RECORD: ${pet.record}`,CW-95,14);
+  ctx.fillStyle='rgba(57,255,20,.25)';ctx.font=`5px 'Press Start 2P',monospace`;
+  ctx.fillText(`TAP pour déplacer`,CW/2-46,CH-6);
+  if(DODGE.over&&DODGE.flash>0){
+    ctx.fillStyle=`rgba(255,34,68,${DODGE.flash/20*.5})`;ctx.fillRect(0,0,CW,CH);
+    ctx.fillStyle='#ff2244';ctx.font=`12px 'Press Start 2P',monospace`;ctx.fillText('TOUCHÉ',CW/2-40,CH/2);return;
+  }
+  for(const o of DODGE.obstacles){
+    ctx.shadowColor=o.color;ctx.shadowBlur=6;
+    ctx.fillStyle=o.color;ctx.font=`13px serif`;ctx.fillText(o.shape,o.x-6,o.y+5);
+    ctx.shadowBlur=0;
+  }
+  if(DODGE.flash>0&&!DODGE.over){ctx.strokeStyle=`rgba(255,107,53,${DODGE.flash/5})`;ctx.lineWidth=3;ctx.strokeRect(2,2,CW-4,CH-4);}
+  const sc=.8, P=Math.round(6*sc), t=frame*.06;
+  drawCharacter(DODGE.petX,DODGE.petY+P*6,sc,t,DODGE.over?'dead':'great');
+  ctx.fillStyle='rgba(57,255,20,.15)';ctx.beginPath();ctx.ellipse(DODGE.petX,DODGE.petY+P*7,14,3.5,0,0,Math.PI*2);ctx.fill();
+}
+
+// ── RHYTHM RENDERER ──────────────────────────────
+function drawRhythm(){
+  updateRhythm();
+  const now=performance.now();
+  const elapsed=now-RHYTHM.startTime;
+  const progress=Math.min(1,elapsed/RHYTHM.maxTime);
+  // Progress bar
+  ctx.fillStyle='#1a1a2e';ctx.fillRect(10,CH-14,CW-20,8);
+  ctx.fillStyle=var_green;ctx.fillRect(10,CH-14,(CW-20)*progress,8);
+  // HUD
+  ctx.fillStyle='rgba(57,255,20,.8)';ctx.font=`7px 'Press Start 2P',monospace`;
+  ctx.fillText(`SCORE: ${RHYTHM.score}`,8,14);
+  ctx.fillText(`COMBO: ${RHYTHM.combo}`,CW/2-30,14);
+  // Beat line
+  const lineY=CH*.65;
+  ctx.strokeStyle='rgba(57,255,20,.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,lineY);ctx.lineTo(CW,lineY);ctx.stroke();
+  // Target zone
+  ctx.strokeStyle='rgba(57,255,20,.6)';ctx.lineWidth=2;
+  ctx.strokeRect(CW/2-30,lineY-16,60,32);
+  // Beats falling from top
+  for(const b of RHYTHM.beats){
+    const timeUntil=b.time-now;
+    if(timeUntil<-500||timeUntil>2500) continue;
+    const y=lineY-(timeUntil/2500)*(lineY-20);
+    const alpha=b.hit?0.2:0.9;
+    ctx.fillStyle=`rgba(57,255,20,${alpha})`;
+    ctx.fillRect(CW/2-12,y-8,24,16);
+    if(!b.hit){ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.strokeRect(CW/2-12,y-8,24,16);}
+  }
+  // TAP hint
+  ctx.fillStyle='rgba(57,255,20,.3)';ctx.font=`6px 'Press Start 2P',monospace`;
+  ctx.fillText(`TAP sur les beats !`,CW/2-56,lineY+28);
+  // Particles
+  for(const p of RHYTHM.particles){
+    const alpha=p.life/20;
+    if(p.miss){ctx.fillStyle=`rgba(255,34,68,${alpha})`;ctx.font=`8px 'Press Start 2P',monospace`;ctx.fillText('✗',p.x,CH/2-p.life*2);}
+    else{ctx.fillStyle=`rgba(57,255,20,${alpha})`;ctx.font=`8px 'Press Start 2P',monospace`;ctx.fillText(p.combo>3?`×${p.combo}!`:'✓',p.x,CH/2-p.life*2);}
+  }
+}
+const var_green='#39ff14';
+
+// ── MEMORY RENDERER ──────────────────────────────
+function drawMemoryGame(){
+  if(MEMORY.litT>0) MEMORY.litT--;
+  ctx.fillStyle='rgba(57,255,20,.8)';ctx.font=`7px 'Press Start 2P',monospace`;
+  ctx.fillText(`SCORE: ${MEMORY.score}`,8,14);
+  // Status
+  const status=MEMORY.showing?'OBSERVE...':MEMORY.waitPlayer?'REPRODUIS !':'...';
+  ctx.fillStyle='rgba(255,176,0,.7)';ctx.font=`6px 'Press Start 2P',monospace`;
+  ctx.fillText(status,CW/2-35,30);
+  // 4 buttons
+  const btns=getMemoryButtons();
+  btns.forEach((b,i)=>{
+    const lit=MEMORY.litBtn===i&&MEMORY.litT>0;
+    ctx.fillStyle=lit?MEM_COLORS[i]:darken(MEM_COLORS[i],.3);
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    if(!lit){ctx.strokeStyle=darken(MEM_COLORS[i],.6);ctx.lineWidth=2;ctx.strokeRect(b.x,b.y,b.w,b.h);}
+    ctx.fillStyle=lit?'#fff':'rgba(255,255,255,.4)';
+    ctx.font=`8px 'Press Start 2P',monospace`;
+    ctx.fillText(MEM_LABELS[i],b.x+b.w/2-4,b.y+b.h/2+3);
+  });
+  // Flash result
+  if(MEMORY.flashT>0){
+    MEMORY.flashT--;
+    const a=MEMORY.flashT/40;
+    ctx.fillStyle=`rgba(${MEMORY.flash==='✓'?'57,255,20':'255,34,68'},${a*.6})`;
+    ctx.fillRect(0,0,CW,CH);
+    ctx.fillStyle=MEMORY.flash==='✓'?var_green:'#ff2244';
+    ctx.font=`18px 'Press Start 2P',monospace`;
+    ctx.fillText(MEMORY.flash,CW/2-10,CH*.75);
+  }
+  // Sequence preview (dots)
+  const dotY=CH-20;
+  MEMORY.sequence.forEach((s,i)=>{
+    ctx.fillStyle=i<MEMORY.playerSeq.length?MEM_COLORS[s]:darken(MEM_COLORS[s],.4);
+    ctx.beginPath();ctx.arc(CW/2+(i-MEMORY.sequence.length/2)*14+7,dotY,4,0,Math.PI*2);ctx.fill();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════════════
+const MOOD_MAP={great:{label:'😄 HEUREUX',color:'#39ff14'},ok:{label:'😐 NEUTRE',color:'#ffb000'},hungry:{label:'😤 AFFAMÉ',color:'#ff6b35'},tired:{label:'😴 FATIGUÉ',color:'#00d4ff'},sad:{label:'😢 TRISTE',color:'#ec4899'},angry:{label:'😡 ÉNERVÉ',color:'#ff2244'},sick:{label:'🤒 MALADE',color:'#a3e635'},dead:{label:'💀 FIN',color:'#444'}};
+
+function updateUI(){
+  if(!pet)return;
+  ['hunger','happy','energy','bond','clean','health'].forEach(k=>{document.getElementById('bar-'+k).style.width=pet[k]+'%';});
+  document.getElementById('age-display').textContent=`JOUR ${Math.floor(pet.age/2)} // ${pet.stage.toUpperCase()}`;
+  document.getElementById('pet-header-info').innerHTML=`${pet.name}<br>JOUR ${Math.floor(pet.age/2)}`;
+  document.getElementById('dialogue-speaker').textContent=pet.name+':';
+  const md=getMood(),m=MOOD_MAP[md]||MOOD_MAP.ok;
+  const ind=document.getElementById('mood-indicator');
+  ind.textContent=m.label;ind.style.color=m.color;ind.style.textShadow=`0 0 8px ${m.color}`;
+  document.getElementById('sick-badge').style.display=pet.sick?'block':'none';
+  updateXPBar();
+}
+
+function typeDialogue(text){
+  const el=document.getElementById('dialogue-text');
+  clearTimeout(typingTO);el.innerHTML='';let i=0;
+  playSound('talk');
+  function type(){if(i<text.length){el.innerHTML=text.slice(0,i+1)+'<span class="typing-cursor"></span>';i++;typingTO=setTimeout(type,20+Math.random()*14);}else el.innerHTML=text;}
+  type();
+}
+function toggleTalk(){const a=document.getElementById('talk-area');a.classList.toggle('open');if(a.classList.contains('open'))setTimeout(()=>document.getElementById('talk-input').focus(),100);}
+function sendMessage(){
+  const inp=document.getElementById('talk-input'),msg=inp.value.trim();
+  if(!msg||!pet||!pet.alive)return;
+  inp.value='';MEM.silenceTicks=0;
+  pet.bond=Math.min(100,pet.bond+2);gainXP(3);
+  typeDialogue(buildResponse(msg,pet));updateUI();
+}
+document.getElementById('talk-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
+
+// ══════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════
+function fillPx(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));}
+function hexRgb(h){return `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}`;}
+function darken(h,f){
+  if(!h||h[0]!=='#')return h||'#000';
+  const r=Math.round(parseInt(h.slice(1,3),16)*f),g=Math.round(parseInt(h.slice(3,5),16)*f),b=Math.round(parseInt(h.slice(5,7),16)*f);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+</script>
+</body>
+</html>
