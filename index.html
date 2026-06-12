@@ -119,13 +119,18 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
   <div class="death-title">// GAME OVER //</div>
   <div class="death-sub" id="death-sub"></div>
   <div class="death-stats" id="death-stats"></div>
-  <button class="big-btn red" onclick="location.reload()">▶ RECOMMENCER</button>
+  <div id="heritage-box" style="display:none;background:rgba(255,224,102,.08);border:2px solid #ffe066;border-radius:10px;padding:10px 14px;font-size:6px;color:#ffe066;line-height:2.2;text-align:center"></div>
+  <button class="big-btn red" onclick="rebirthPet()">🦄 RENAISSANCE</button>
 </div>
 
 <div class="device" id="main-device" style="display:none">
   <div class="header">
     <div class="brand">✨ PIXELPET ✨<br>LICORNE</div>
-    <div class="pet-info" id="pet-header-info">---<br>JOUR 0</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button id="mute-btn" onclick="toggleMute()" style="background:rgba(255,157,226,.1);border:2px solid #ff9de2;border-radius:7px;color:#ff9de2;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent">🔊</button>
+      <button onclick="takePhoto()" style="background:rgba(255,224,102,.1);border:2px solid #ffe066;border-radius:7px;color:#ffe066;font-family:'Press Start 2P',monospace;font-size:9px;padding:5px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent">📸</button>
+      <div class="pet-info" id="pet-header-info">---<br>JOUR 0</div>
+    </div>
   </div>
   <div class="xp-row">
     <div class="xp-label" id="xp-label">LV.1</div>
@@ -135,6 +140,7 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
   <div class="screen-wrap">
     <div class="screen">
       <div class="sick-badge" id="sick-badge">🤒 MALADE</div>
+      <div id="daynight-badge" style="position:absolute;top:7px;left:8px;font-size:8px;z-index:11;display:none"></div>
       <div class="mood-bar" id="mood-indicator">😐 NEUTRE</div>
       <canvas id="gc" width="320" height="210"></canvas>
       <div class="dialogue-box">
@@ -192,6 +198,7 @@ let AC = null;
 function getAC(){ if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)(); return AC; }
 
 function beep(freq=440, dur=0.1, vol=0.18, type='square', slide=0){
+  if(typeof muted!=='undefined'&&muted) return;
   try {
     const ac=getAC(), o=ac.createOscillator(), g=ac.createGain();
     o.connect(g); g.connect(ac.destination);
@@ -385,10 +392,19 @@ function birthPet(){
   petMem=freshMem(); personality=freshPersonality();
   currentQuest=null; questProgress=0; questCooldown=3; equipped={};
   clearSave();
+  // Apply heritage from previous pet
+  try{
+    const raw=localStorage.getItem('pixelpet_heritage');
+    if(raw){
+      const h=JSON.parse(raw);
+      heritageData=h;
+    }
+  }catch(e){}
   document.getElementById('birth-screen').style.display='none';
   document.getElementById('main-device').style.display='block';
   updateUI(); startLoop(); updateQuestUI();
   setTimeout(()=>typeDialogue(getPick(D.intro,pet)),700);
+  applyHeritage();
 }
 document.getElementById('name-input').addEventListener('keydown',e=>{if(e.key==='Enter')birthPet();});
 
@@ -474,11 +490,38 @@ function spontaneous(){
 function killPet(){
   pet.alive=false;clearInterval(gameLoop);
   document.getElementById('status-dot').style.cssText='background:#ff2244;animation:none;box-shadow:0 0 6px #ff2244';
+  // Save heritage
+  const heritage={
+    name: pet.name,
+    level: pet.level,
+    bond: Math.round(pet.bond),
+    days: Math.floor(pet.age/2),
+    stage: pet.stage,
+    // Bonus transmis : objet préféré ou XP partiel
+    bonusXP: Math.floor(pet.xp*0.3 + pet.level*15),
+    bonusItem: getBestItem(),
+    color: pet.color,
+  };
+  try{ localStorage.setItem('pixelpet_heritage', JSON.stringify(heritage)); }catch(e){}
   setTimeout(()=>{
     document.getElementById('death-screen').style.display='flex';
     document.getElementById('death-sub').textContent=`${pet.name} n'est plus.`;
-    document.getElementById('death-stats').innerHTML=`VÉCU : JOUR ${Math.floor(pet.age/2)}<br>NIVEAU : ${pet.level}<br>XP TOTAL : ${pet.xp}<br>LIEN : ${Math.round(pet.bond)}%`;
+    document.getElementById('death-stats').innerHTML=`VÉCU : JOUR ${heritage.days}<br>NIVEAU : ${heritage.level}<br>LIEN FINAL : ${heritage.bond}%`;
+    const hb = document.getElementById('heritage-box');
+    hb.style.display='block';
+    hb.innerHTML=`🌟 HÉRITAGE<br>${pet.name} lègue ${heritage.bonusXP} XP${heritage.bonusItem?' et un(e) '+GIFT_DEFS[heritage.bonusItem].name:''}.<br>Le prochain en bénéficiera.`;
   },1800);
+}
+
+function getBestItem(){
+  if(!pet.inventory) return null;
+  const entries=Object.entries(pet.inventory).filter(([k,v])=>v>0);
+  if(!entries.length) return null;
+  return entries.sort((a,b)=>b[1]-a[1])[0][0];
+}
+
+function rebirthPet(){
+  location.reload();
 }
 
 // ══════════════════════════════════════════════════════
@@ -633,10 +676,12 @@ function rhythmTap(e){
     RHYTHM.score++; RHYTHM.combo++;
     RHYTHM.maxCombo=Math.max(RHYTHM.maxCombo,RHYTHM.combo);
     playSound('rhythm_ok');
+    vibrate([20]);
     RHYTHM.particles.push({x:z.x+z.w/2,y:z.hitY,life:22,lane,combo:RHYTHM.combo,ok:true});
   } else {
     RHYTHM.combo=0; RHYTHM.misses++;
     playSound('rhythm_miss');
+    vibrate([60,30]);
     RHYTHM.particles.push({x:z.x+z.w/2,y:z.hitY-10,life:18,lane,ok:false});
   }
 }
@@ -765,12 +810,14 @@ function memoryTap(e){
       const expected=MEMORY.sequence[MEMORY.playerSeq.length-1];
       if(colorIdx===expected){
         playSound('memory_ok');
+        vibrate([15]);
         if(MEMORY.playerSeq.length===MEMORY.sequence.length){
           MEMORY.score++; MEMORY.flash='✓'; MEMORY.flashT=28;
           setTimeout(()=>memoryNextRound(),700);
         }
       } else {
         playSound('memory_fail');
+        vibrate([80,40,80]);
         MEMORY.flash='✗'; MEMORY.flashT=40;
         setTimeout(()=>endMemory(false),700);
       }
@@ -815,10 +862,12 @@ function triggerAnim(mode){ANIM.mode=mode;ANIM.actionT=30;setTimeout(()=>{if(ANI
 
 function render(){
   ctx.clearRect(0,0,CW,CH);
+  drawDayNightBg();
   drawGrid();
   if(activeGame==='rhythm') drawRhythm();
   else if(activeGame==='memory') drawMemoryGame();
   else drawPetScreen();
+  drawDayNightOverlay();
   requestAnimationFrame(render);
   frame++;
 }
@@ -1514,6 +1563,203 @@ window.addEventListener('load',()=>{
     setTimeout(()=>typeDialogue(msg||getPick(D.intro,pet)),700);
   }
 });
+
+
+
+// ══════════════════════════════════════════════════════
+//  MUTE + VIBRATIONS
+// ══════════════════════════════════════════════════════
+let muted = false;
+function toggleMute(){
+  muted=!muted;
+  document.getElementById('mute-btn').textContent=muted?'🔇':'🔊';
+}
+
+function vibrate(pattern){
+  if(navigator.vibrate) try{navigator.vibrate(pattern);}catch(e){}
+}
+
+// ══════════════════════════════════════════════════════
+//  CYCLE JOUR / NUIT
+// ══════════════════════════════════════════════════════
+function getTimeOfDay(){
+  const h=new Date().getHours();
+  if(h>=6&&h<9)   return {phase:'aube',     sky:'#1a0a3e',horizon:'#ff9de2',stars:false,moon:false,sun:false,dawn:true};
+  if(h>=9&&h<17)  return {phase:'jour',     sky:'#0d1a3e',horizon:'#7ec8e3',stars:false,moon:false,sun:true, dawn:false};
+  if(h>=17&&h<20) return {phase:'coucher',  sky:'#1a0a2e',horizon:'#ffb700',stars:false,moon:false,sun:false,dawn:true};
+  if(h>=20&&h<22) return {phase:'soirée',   sky:'#0a0118',horizon:'#2d1b4e',stars:true, moon:true, sun:false,dawn:false};
+  return              {phase:'nuit',     sky:'#050010',horizon:'#1a0a2e',stars:true, moon:true, sun:false,dawn:false};
+}
+
+function drawDayNightBg(){
+  const tod=getTimeOfDay();
+  // Gradient sky
+  const grad=ctx.createLinearGradient(0,0,0,CH);
+  grad.addColorStop(0,tod.sky);
+  grad.addColorStop(1,tod.horizon);
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,CW,CH);
+
+  const t=frame*.02;
+  // Stars
+  if(tod.stars){
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    // Pseudo-random but stable stars
+    for(let i=0;i<22;i++){
+      const sx=((i*137+43)%CW);
+      const sy=((i*97+11)%(CH*0.55));
+      const twinkle=(Math.sin(t+i*0.7)+1)/2;
+      ctx.globalAlpha=0.3+twinkle*0.7;
+      ctx.fillRect(sx,sy,1,1);
+    }
+    ctx.globalAlpha=1;
+  }
+  // Moon
+  if(tod.moon){
+    const mx=CW-45, my=28;
+    ctx.fillStyle='rgba(255,245,200,0.9)';
+    ctx.beginPath();ctx.arc(mx,my,10,0,Math.PI*2);ctx.fill();
+    // Crescent shadow
+    ctx.fillStyle=tod.sky;
+    ctx.beginPath();ctx.arc(mx+4,my-2,8,0,Math.PI*2);ctx.fill();
+    // Étoile à côté
+    ctx.fillStyle='rgba(255,224,102,0.8)';
+    ctx.font='10px serif'; ctx.fillText('✦',mx+14,my+4);
+  }
+  // Sun
+  if(tod.sun){
+    const sx=CW-38, sy=26;
+    const glow=ctx.createRadialGradient(sx,sy,4,sx,sy,18);
+    glow.addColorStop(0,'rgba(255,224,102,0.4)');
+    glow.addColorStop(1,'rgba(255,224,102,0)');
+    ctx.fillStyle=glow; ctx.fillRect(sx-18,sy-18,36,36);
+    ctx.fillStyle='rgba(255,200,50,0.9)';
+    ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fill();
+  }
+  // Dawn/dusk tint
+  if(tod.dawn){
+    ctx.fillStyle='rgba(255,100,100,0.07)';
+    ctx.fillRect(0,0,CW,CH);
+  }
+  // Update day/night badge
+  const badge=document.getElementById('daynight-badge');
+  if(badge){
+    const icons={aube:'🌅',jour:'☀️',coucher:'🌇',soirée:'🌆',nuit:'🌙'};
+    badge.textContent=icons[tod.phase]||'';
+    badge.style.display='block';
+  }
+  // Night bonus: pet sleeps on its own between 22h-7h
+  if(tod.phase==='nuit'&&pet&&pet.alive&&!pet.sleeping&&Math.random()<0.003){
+    pet.sleeping=true;
+    typeDialogue('Il fait nuit. Je ferme les yeux tout seul. 💤');
+  }
+}
+
+function drawDayNightOverlay(){
+  const tod=getTimeOfDay();
+  if(tod.phase==='nuit'){
+    ctx.fillStyle='rgba(5,0,16,0.25)';
+    ctx.fillRect(0,0,CW,CH);
+  } else if(tod.phase==='soirée'){
+    ctx.fillStyle='rgba(30,0,50,0.1)';
+    ctx.fillRect(0,0,CW,CH);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  MODE PHOTO
+// ══════════════════════════════════════════════════════
+function takePhoto(){
+  if(!pet||!pet.alive){typeDialogue('Je suis pas présentable là.');return;}
+  vibrate([30,20,30]);
+  // Render a clean frame to a temp canvas
+  const tmp=document.createElement('canvas');
+  tmp.width=CW; tmp.height=CH;
+  const tc=tmp.getContext('2d');
+
+  // Draw bg
+  const tod=getTimeOfDay();
+  const grad=tc.createLinearGradient(0,0,0,CH);
+  grad.addColorStop(0,tod.sky); grad.addColorStop(1,tod.horizon);
+  tc.fillStyle=grad; tc.fillRect(0,0,CW,CH);
+
+  // Draw pet on temp canvas — swap ctx temporarily
+  const realCtx=ctx;
+  // We can't easily swap, so use toDataURL from main canvas + add frame
+  const photoCanvas=document.createElement('canvas');
+  photoCanvas.width=CW+20; photoCanvas.height=CH+50;
+  const pc=photoCanvas.getContext('2d');
+
+  // Pink frame
+  pc.fillStyle='#2d1b4e';
+  pc.fillRect(0,0,photoCanvas.width,photoCanvas.height);
+  pc.strokeStyle='#ff9de2';
+  pc.lineWidth=3;
+  pc.strokeRect(4,4,photoCanvas.width-8,photoCanvas.height-8);
+  // Corner stars
+  ['✦','✦','✦','✦'].forEach((s,i)=>{
+    pc.fillStyle='#ffe066';pc.font='12px serif';
+    const cx=i<2?12:photoCanvas.width-20;
+    const cy=i%2===0?14:photoCanvas.height-8;
+    pc.fillText(s,cx,cy);
+  });
+
+  // Copy current canvas
+  pc.drawImage(gc,10,8);
+
+  // Caption
+  pc.fillStyle='#ff9de2';
+  pc.font=`7px 'Press Start 2P',monospace`;
+  pc.fillText(`${pet.name}  •  LV.${pet.level}  •  ${pet.stage.toUpperCase()}`,12,CH+28);
+  pc.fillStyle='rgba(255,224,102,0.7)';
+  pc.font=`6px 'Press Start 2P',monospace`;
+  const dateStr=new Date().toLocaleDateString('fr-FR');
+  pc.fillText(`JOUR ${Math.floor(pet.age/2)}  •  ${dateStr}`,12,CH+42);
+
+  // Download
+  try{
+    const link=document.createElement('a');
+    link.download=`${pet.name}_pixelpet.png`;
+    link.href=photoCanvas.toDataURL('image/png');
+    link.click();
+    typeDialogue('📸 Photo prise ! Bisous sur la photo. 💕');
+  }catch(e){
+    typeDialogue('📸 Oups. Photo ratée. On réessaie ?');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  GÉNÉALOGIE
+// ══════════════════════════════════════════════════════
+let heritageData=null;
+
+function applyHeritage(){
+  if(!heritageData||!pet) return;
+  setTimeout(()=>{
+    if(heritageData.bonusXP>0){
+      pet.xp=Math.min(xpForLevel(pet.level)-1, heritageData.bonusXP);
+      updateXPBar();
+    }
+    if(heritageData.bonusItem&&GIFT_DEFS[heritageData.bonusItem]){
+      pet.inventory[heritageData.bonusItem]=(pet.inventory[heritageData.bonusItem]||0)+1;
+      renderInventory();
+    }
+    const bonusLine=heritageData.bonusItem
+      ? `${heritageData.name} m'a laissé ${heritageData.bonusXP} XP et ${GIFT_DEFS[heritageData.bonusItem].name}. Je porte son âme.`
+      : `${heritageData.name} m'a laissé ${heritageData.bonusXP} XP. Je porte son héritage.`;
+    typeDialogue('🌟 '+bonusLine);
+    try{localStorage.removeItem('pixelpet_heritage');}catch(e){}
+    heritageData=null;
+  },1400);
+}
+
+
+// Heritage applied after birth — called from birthPet via applyHeritage()
+
+// ══════════════════════════════════════════════════════
+//  VIBRATIONS sur mini-jeux
+// ══════════════════════════════════════════════════════
+
 
 </script>
 </body>
