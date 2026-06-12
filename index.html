@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>PIXELPET</title>
+<title>PIXELPET 🦄</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PIXELPET">
+<meta name="theme-color" content="#1a0a2e">
+<link rel="apple-touch-icon" id="apple-icon" href="">
+<link rel="manifest" id="pwa-manifest" href="">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -102,6 +108,13 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
 .death-title{font-size:10px;color:var(--red);text-shadow:0 0 20px var(--red);line-height:1.8}
 .death-sub{font-size:8px;color:#555;line-height:2}
 .death-stats{font-size:6px;color:#444;line-height:2.4}
+
+/* DRAG FOOD */
+.food-drag{position:fixed;font-size:36px;pointer-events:none;z-index:300;transition:none;filter:drop-shadow(0 0 8px #ffe066)}
+/* SCRUB HINT */
+.scrub-hint{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);font-size:6px;color:rgba(255,157,226,0.5);font-family:'Press Start 2P',monospace;pointer-events:none;z-index:12;white-space:nowrap}
+/* PLAYER NAME BADGE */
+#player-badge{position:absolute;bottom:8px;right:10px;font-size:5px;color:rgba(255,224,102,0.6);font-family:'Press Start 2P',monospace;z-index:12;pointer-events:none}
 </style>
 </head>
 <body>
@@ -112,6 +125,8 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
   <div class="birth-sub">NOMME TA CRÉATURE</div>
   <div class="birth-traits" id="birth-traits">...</div>
   <input class="birth-input" id="name-input" maxlength="10" placeholder="???" autocomplete="off" spellcheck="false">
+  <div class="birth-sub" style="margin-top:12px;margin-bottom:6px">TON PRÉNOM ?</div>
+  <input class="birth-input" id="player-name-input" maxlength="16" placeholder="..." autocomplete="off" spellcheck="false" style="font-size:8px">
   <button class="big-btn" onclick="birthPet()">▶ HATCH</button>
 </div>
 
@@ -143,12 +158,21 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
       <div id="daynight-badge" style="position:absolute;top:7px;left:8px;font-size:8px;z-index:11;display:none"></div>
       <div class="mood-bar" id="mood-indicator">😐 NEUTRE</div>
       <canvas id="gc" width="320" height="210"></canvas>
+      <div class="scrub-hint" id="scrub-hint">FROTTE POUR LAVER ✨</div>
+      <div id="player-badge"></div>
       <div class="dialogue-box">
         <div class="dialogue-speaker" id="dialogue-speaker">???</div>
         <div class="dialogue-text" id="dialogue-text"><span class="typing-cursor"></span></div>
       </div>
     </div>
   </div>
+  <div id="drag-zone" style="display:flex;justify-content:center;gap:18px;margin:8px 0 4px">
+    <div class="drag-icon" id="drag-food" draggable="true" ontouchstart="dragStart(event,'feed')" onmousedown="dragStart(event,'feed')" style="font-size:34px;cursor:grab;user-select:none;-webkit-user-drag:element;filter:drop-shadow(0 0 6px #ffe066)" title="Glisse sur la licorne">🍖</div>
+    <div class="drag-icon" id="drag-soap" draggable="true" ontouchstart="dragStart(event,'wash')" onmousedown="dragStart(event,'wash')" style="font-size:34px;cursor:grab;user-select:none;filter:drop-shadow(0 0 6px #7ec8e3)" title="Frotte sur la licorne">🧼</div>
+    <div class="drag-icon" id="drag-med" draggable="true" ontouchstart="dragStart(event,'heal')" onmousedown="dragStart(event,'heal')" style="font-size:34px;cursor:grab;user-select:none;filter:drop-shadow(0 0 6px #ff6eb4)" title="Donne à la licorne">💊</div>
+    <div class="drag-icon" id="drag-gift" draggable="true" ontouchstart="dragStart(event,'gift')" onmousedown="dragStart(event,'gift')" style="font-size:34px;cursor:grab;user-select:none;filter:drop-shadow(0 0 6px #a855f7)" title="Offre à la licorne">🎁</div>
+  </div>
+  <div style="text-align:center;font-size:5px;color:rgba(255,157,226,0.4);font-family:'Press Start 2P',monospace;margin-bottom:4px">GLISSE SUR LA LICORNE</div>
   <div class="stats">
     <div class="stat"><div class="stat-label">🍖 FAIM</div><div class="stat-bar-wrap"><div class="stat-bar bar-hunger" id="bar-hunger" style="width:80%"></div></div></div>
     <div class="stat"><div class="stat-label">💜 HUMEUR</div><div class="stat-bar-wrap"><div class="stat-bar bar-happy" id="bar-happy" style="width:70%"></div></div></div>
@@ -691,6 +715,11 @@ function buildResponse(msg,p){
   if(p.happy<25)return getPick(D.fb_sad,p);
   if(p.bond<15)return getPick(D.fb_bond,p);
   if(MEM.talkCount>8&&Math.random()<.3)return `On a parlé ${MEM.talkCount} fois. J'aime ça.`;
+  // Player name detection
+  const _detected=detectPlayerName?detectPlayerName(msg):null;
+  if(_detected){ savePlayerName(_detected); return `${_detected} ! Je retiens. Je sais qui tu es maintenant. 💕`; }
+  if(playerName&&/comment.*appelle|mon nom|mon pr.nom|sais.*qui/i.test(m)){ return `Tu t'appelles ${playerName}. Je retiens tout. ✨`; }
+  if(!playerName&&/comment.*appelle|ton pr.nom|tu t.appelles/i.test(m)){ return `Je sais pas encore ton prénom. Dis-le moi !`; }
   return getPick(D.fb_great,p);
 }
 
@@ -703,6 +732,8 @@ const tSet=TRAIT_SETS[Math.floor(Math.random()*TRAIT_SETS.length)];
 document.getElementById('birth-traits').textContent=`TRAITS: ${tSet.join(' · ').toUpperCase()}`;
 
 function birthPet(){
+  const pn=document.getElementById('player-name-input');
+  if(pn&&pn.value.trim()) savePlayerName(pn.value.trim().charAt(0).toUpperCase()+pn.value.trim().slice(1).toLowerCase());
   const raw=document.getElementById('name-input').value.trim();
   const name=(raw||['ZOX','BLIP','KURI','VELK','NORO','GLIX','FRAK','YORP','PIXO','DRAK'][Math.floor(Math.random()*10)]).toUpperCase();
   pet={name,traits:tSet,hunger:80,happy:70,energy:90,bond:5,clean:95,health:100,
@@ -1253,6 +1284,7 @@ function drawPetScreen(){
     ctx.fillText('!',bX-4,bY-72*sc);
   }
   if(typeof drawEquipped==='function') drawEquipped(bX,bY,sc,t);
+  if(typeof updateParticles==='function'){ updateParticles(); drawParticles(); }
 }
 
 // ── LICORNE KAWAII — stade-aware ──────────────────
@@ -1723,6 +1755,16 @@ function updateFav(){
 }
 
 function memLine(){
+  // Occasionally use player name
+  if(playerName&&Math.random()<0.2){
+    const plines=[
+      `${playerName}, tu penses encore à moi ?`,
+      `${playerName}. C'est un joli prénom.`,
+      `Je me souviens de ton prénom, ${playerName}. Je retiens tout.`,
+      `Hé ${playerName}. Signal de présence.`,
+    ];
+    return plines[Math.floor(Math.random()*plines.length)];
+  }
   const L=[];
   if(petMem.feedTotal>20)L.push(`Tu m'as nourri ${petMem.feedTotal} fois. Obésité pixel détectée.`);
   if(petMem.pizzaCount>5)L.push(`${petMem.pizzaCount} pizzas depuis ma naissance. Je suis une pizza.`);
@@ -2089,6 +2131,423 @@ function applyHeritage(){
 //  VIBRATIONS sur mini-jeux
 // ══════════════════════════════════════════════════════
 
+
+
+// ══════════════════════════════════════════════════════
+//  PRÉNOM DU JOUEUR
+// ══════════════════════════════════════════════════════
+let playerName = '';
+const PLAYER_KEY = 'pixelpet_player';
+
+function loadPlayerName(){
+  try{ playerName = localStorage.getItem(PLAYER_KEY)||''; }catch(e){}
+  updatePlayerBadge();
+}
+function savePlayerName(n){
+  playerName=n;
+  try{ localStorage.setItem(PLAYER_KEY,n); }catch(e){}
+  updatePlayerBadge();
+}
+function updatePlayerBadge(){
+  const el=document.getElementById('player-badge');
+  if(el&&playerName) el.textContent='👤 '+playerName.toUpperCase();
+}
+
+// Detect name in chat
+function detectPlayerName(msg){
+  // "je m'appelle X", "mon prénom c'est X", "je suis X", "appelle-moi X", "c'est X"
+  const patterns=[
+    /je m['']?appelle (\w+)/i,
+    /mon pr[ée]nom (?:c['']est |est )(\w+)/i,
+    /(?:je suis|je suis la) (\w+)/i,
+    /appelle.moi (\w+)/i,
+    /c['']est (\w+)/i,
+    /m['']appelle (\w+)/i,
+  ];
+  for(const p of patterns){
+    const m=msg.match(p);
+    if(m&&m[1]&&m[1].length>=2&&m[1].length<=16){
+      return m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase();
+    }
+  }
+  return null;
+}
+
+// buildResponse — prénom géré directement dans l'original
+
+// Inject playerName into spontaneous / memLine randomly
+// memLine — playerName intégré directement
+
+// Inject into random spontaneous
+const _getPick_orig = getPick;
+// Patch levelup to use player name sometimes
+const _D_levelup_orig = D.levelup;
+D.levelup = [
+  ...D.levelup,
+  p=>playerName?`${playerName}, regarde ! Niveau ${p.level} ! On y est.`:`Niveau ${p.level} ! Signal de progression.`,
+];
+D.intro = [
+  ...D.intro,
+  p=>playerName?`${playerName} ? C'est toi ! Moi c'est ${p.name}. Contente de te voir.`:`${p.name} en ligne. Qui es-tu ?`,
+];
+
+// ══════════════════════════════════════════════════════
+//  INTERACTIONS TACTILES
+// ══════════════════════════════════════════════════════
+
+// ── Particules visuelles ──────────────────────────────
+const PARTICLES = [];
+function spawnParticles(type, x, y, count=6){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=1+Math.random()*2;
+    PARTICLES.push({
+      type, x, y,
+      vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-1.5,
+      life:40+Math.random()*20, maxLife:60,
+      size:8+Math.random()*8,
+    });
+  }
+}
+function updateParticles(){
+  for(const p of PARTICLES){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; p.life--; }
+  PARTICLES.length && PARTICLES.splice(0, PARTICLES.length, ...PARTICLES.filter(p=>p.life>0));
+}
+function drawParticles(){
+  for(const p of PARTICLES){
+    const alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    if(p.type==='heart'){
+      ctx.font=`${Math.round(p.size)}px serif`;
+      ctx.fillText('💕',p.x-p.size/2,p.y);
+    } else if(p.type==='bubble'){
+      ctx.strokeStyle=`rgba(126,200,227,${alpha})`;
+      ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size/2,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=`rgba(255,255,255,0.15)`;ctx.fill();
+    } else if(p.type==='star'){
+      ctx.font=`${Math.round(p.size)}px serif`;
+      ctx.fillText('✨',p.x-p.size/2,p.y);
+    } else if(p.type==='food'){
+      ctx.font=`${Math.round(p.size)}px serif`;
+      ctx.fillText('🍖',p.x-p.size/2,p.y);
+    } else if(p.type==='sparkle'){
+      ctx.fillStyle=`rgba(255,224,102,${alpha})`;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size*.3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+}
+
+// Particles drawn inline in main drawPetScreen
+
+// ── Pet hit zone ──────────────────────────────────────
+function getPetBounds(){
+  const floorY=CH-22;
+  const sc=pet?pet.stage==='bébé'?0.75:pet.stage==='enfant'?0.88:pet.stage==='ancien'?1.05:1.0:1;
+  const P=Math.round(8*sc);
+  const bX=CW/2+(ANIM?ANIM.walkX:0);
+  const bY=floorY;
+  return { cx:bX, cy:bY-P*6, r:P*5 };
+}
+function isOnPet(cx,cy){
+  const b=getPetBounds();
+  return Math.hypot(cx-b.cx,cy-b.cy)<b.r*1.3;
+}
+function canvasCoords(e){
+  const r=gc.getBoundingClientRect();
+  const scaleX=CW/r.width, scaleY=CH/r.height;
+  if(e.touches&&e.touches[0]) return {x:(e.touches[0].clientX-r.left)*scaleX,y:(e.touches[0].clientY-r.top)*scaleY};
+  return {x:(e.clientX-r.left)*scaleX,y:(e.clientY-r.top)*scaleY};
+}
+
+// ── TAP — câlins ─────────────────────────────────────
+let tapTimer=null, tapTime=0, tapStart=null;
+gc.addEventListener('touchstart', onTouchStart, {passive:false});
+gc.addEventListener('mousedown',  onTouchStart);
+gc.addEventListener('touchend',   onTouchEnd, {passive:false});
+gc.addEventListener('mouseup',    onTouchEnd);
+gc.addEventListener('touchmove',  onTouchMove, {passive:false});
+gc.addEventListener('mousemove',  onMouseMove);
+
+function onTouchStart(e){
+  if(activeGame) return;
+  const pos=canvasCoords(e);
+  tapStart={x:pos.x,y:pos.y,time:Date.now()};
+  tapTime=Date.now();
+  scrubPoints=[];
+  if(isOnPet(pos.x,pos.y)){
+    // Start long press detection
+    tapTimer=setTimeout(()=>{ if(tapStart) doCaress(pos.x,pos.y); tapTimer=null; },600);
+  }
+}
+function onTouchEnd(e){
+  if(activeGame||!tapStart) return;
+  const dt=Date.now()-tapTime;
+  const pos=canvasCoords(e.changedTouches?e:e);
+  // Short tap on pet
+  if(dt<500&&tapTimer&&isOnPet(tapStart.x,tapStart.y)){
+    clearTimeout(tapTimer); tapTimer=null;
+    doHug(tapStart.x,tapStart.y);
+  }
+  if(tapTimer){clearTimeout(tapTimer);tapTimer=null;}
+  tapStart=null;
+  // Check drag drop
+  if(dragAction&&dragElem){
+    completeDrag(pos.x,pos.y);
+  }
+  dragAction=null; dragElem=null;
+}
+
+// ── CÂLIN (tap rapide) ────────────────────────────────
+function doHug(x,y){
+  if(!pet||!pet.alive) return;
+  pet.happy=Math.min(100,pet.happy+5);
+  pet.bond=Math.min(100,pet.bond+2);
+  spawnParticles('heart',x,y,5);
+  vibrate([20]);
+  const lines=[
+    `Oh ! Câlin surprise. J'adore. 💕`,
+    `Hé ! Tu m'as touchée. 🥰`,
+    `Un câlin ! Merci merci merci.`,
+    `Je sens ta présence. C'est bien.`,
+    `♥ Signal affectif reçu.`,
+    playerName?`${playerName} ! Tu es là. 💕`:'Tu es là. Bien.',
+  ];
+  if(Math.random()<0.5) typeDialogue(lines[Math.floor(Math.random()*lines.length)]);
+  gainXP(2); updateUI();
+}
+
+// ── CARESSE (tap long) ────────────────────────────────
+function doCaress(x,y){
+  if(!pet||!pet.alive) return;
+  pet.happy=Math.min(100,pet.happy+8);
+  pet.bond=Math.min(100,pet.bond+4);
+  spawnParticles('star',x,y-20,8);
+  spawnParticles('sparkle',x,y,6);
+  vibrate([30,20,30]);
+  const lines=[
+    `Mmmh... tu me caresses la crinière. C'est magique. ✨`,
+    `Je ronronne en pixel. C'est pas normal mais ça arrive.`,
+    `Doux. Vraiment doux. Encore ?`,
+    `Ma corne brille plus fort quand tu fais ça. 🦄`,
+    `Signal de tendresse maximal. Merci.`,
+    playerName?`${playerName}, tu es la meilleure. 💕`:'Tu es la meilleure. 💕',
+  ];
+  typeDialogue(lines[Math.floor(Math.random()*lines.length)]);
+  gainXP(4); updateUI(); savePet();
+}
+
+// ── FROTTER (scrub) ───────────────────────────────────
+let scrubPoints=[], scrubActive=false, scrubCount=0;
+let soapDragActive=false;
+
+function onTouchMove(e){
+  if(activeGame) return;
+  if(e.type==='touchmove') e.preventDefault();
+  const pos=canvasCoords(e);
+  // Scrub detection — mouvement rapide sur le pet
+  if(tapStart&&isOnPet(pos.x,pos.y)){
+    scrubPoints.push(pos);
+    if(scrubPoints.length>3){
+      const dx=scrubPoints[scrubPoints.length-1].x-scrubPoints[scrubPoints.length-4].x;
+      const dy=scrubPoints[scrubPoints.length-1].y-scrubPoints[scrubPoints.length-4].y;
+      const dist=Math.hypot(dx,dy);
+      if(dist>12){
+        scrubCount++;
+        spawnParticles('bubble',pos.x+Math.random()*20-10,pos.y-10,1);
+        if(scrubCount>=8){
+          doWash();
+          scrubCount=0; scrubPoints=[];
+        }
+      }
+    }
+    if(tapTimer){clearTimeout(tapTimer);tapTimer=null;}
+  }
+  // Drag food move
+  if(dragAction&&dragElem){
+    dragElem.style.left=(pos.x/(CW)*gc.getBoundingClientRect().width+gc.getBoundingClientRect().left-20)+'px';
+    dragElem.style.top=(pos.y/(CH)*gc.getBoundingClientRect().height+gc.getBoundingClientRect().top-20)+'px';
+    // Highlight if over pet
+    if(isOnPet(pos.x,pos.y)){
+      dragElem.style.transform='scale(1.3)';
+      dragElem.style.filter='drop-shadow(0 0 12px #ff9de2)';
+    } else {
+      dragElem.style.transform='scale(1)';
+      dragElem.style.filter='';
+    }
+  }
+}
+function onMouseMove(e){
+  if(!dragAction) return;
+  onTouchMove(e);
+}
+
+function doWash(){
+  if(!pet||!pet.alive) return;
+  const dirty=pet.clean<60;
+  pet.clean=Math.min(100,pet.clean+50);pet.bond=Math.min(100,pet.bond+2);
+  if(pet.sick&&pet.clean>60){pet.sick=false;pet.health=Math.min(100,pet.health+15);}
+  gainXP(6); petMem.washTotal++; updateFav();
+  spawnParticles('bubble',CW/2,CH/2-30,12);
+  spawnParticles('sparkle',CW/2,CH/2-20,8);
+  vibrate([20,10,20,10,20]);
+  typeDialogue(getPick(dirty?D.washed_dirty:D.washed_clean,pet));
+  updateUI(); savePet();
+}
+
+// ── DRAG & DROP ───────────────────────────────────────
+let dragAction=null, dragElem=null;
+
+function dragStart(e,action){
+  if(!pet||!pet.alive||activeGame) return;
+  if(e.type==='touchstart') e.preventDefault();
+  dragAction=action;
+  // Create floating emoji
+  const emojis={feed:'🍖',wash:'🧼',heal:'💊',gift:'🎁'};
+  const el=document.createElement('div');
+  el.className='food-drag';
+  el.textContent=emojis[action];
+  const r=gc.getBoundingClientRect();
+  el.style.position='fixed';
+  el.style.left=(r.left+r.width/2-18)+'px';
+  el.style.top=(r.top+r.height/2-18)+'px';
+  el.style.pointerEvents='none';
+  el.style.zIndex='300';
+  el.style.fontSize='36px';
+  document.body.appendChild(el);
+  dragElem=el;
+  // Kill caress timer
+  if(tapTimer){clearTimeout(tapTimer);tapTimer=null;}
+}
+
+function completeDrag(cx,cy){
+  if(dragElem){ document.body.removeChild(dragElem); dragElem=null; }
+  if(!dragAction||!pet||!pet.alive) return;
+  if(isOnPet(cx,cy)){
+    const action=dragAction;
+    dragAction=null;
+    spawnParticles('sparkle',cx,cy,6);
+    vibrate([30]);
+    doAction(action);
+  } else {
+    dragAction=null;
+    // Shake hint
+    spawnParticles('star',cx,cy,2);
+  }
+}
+
+// Override mouseup on window to catch drag release
+window.addEventListener('mouseup',e=>{
+  if(!dragAction) return;
+  const r=gc.getBoundingClientRect();
+  const cx=(e.clientX-r.left)/(r.width/CW);
+  const cy=(e.clientY-r.top)/(r.height/CH);
+  if(dragElem){document.body.removeChild(dragElem);dragElem=null;}
+  if(isOnPet(cx,cy)){
+    spawnParticles('sparkle',cx,cy,6);
+    vibrate([30]);
+    doAction(dragAction);
+  }
+  dragAction=null;
+});
+window.addEventListener('touchend',e=>{
+  if(!dragAction) return;
+  const t=e.changedTouches[0];
+  const r=gc.getBoundingClientRect();
+  const cx=(t.clientX-r.left)/(r.width/CW);
+  const cy=(t.clientY-r.top)/(r.height/CH);
+  if(dragElem){document.body.removeChild(dragElem);dragElem=null;}
+  if(isOnPet(cx,cy)){
+    spawnParticles('sparkle',cx,cy,6);
+    vibrate([30]);
+    doAction(dragAction);
+  }
+  dragAction=null;
+},{passive:true});
+
+// ══════════════════════════════════════════════════════
+//  ICÔNE PWA — générée en canvas
+// ══════════════════════════════════════════════════════
+function generateIcon(){
+  const ic=document.createElement('canvas');
+  ic.width=180;ic.height=180;
+  const c=ic.getContext('2d');
+  // Background
+  const g=c.createRadialGradient(90,90,10,90,90,90);
+  g.addColorStop(0,'#2d1b4e');g.addColorStop(1,'#1a0a2e');
+  c.fillStyle=g;c.beginPath();c.roundRect(0,0,180,180,36);c.fill();
+  // Stars
+  c.fillStyle='rgba(255,255,255,0.4)';
+  [[20,20],[160,30],[15,160],[165,155],[90,12]].forEach(([x,y])=>{c.font='10px serif';c.fillText('✦',x,y);});
+  // Draw mini unicorn
+  const mx=90,my=110;
+  // Body
+  c.fillStyle='#f0f8ff';c.beginPath();c.ellipse(mx,my,28,22,0,0,Math.PI*2);c.fill();
+  c.fillStyle='#d6eeff';c.beginPath();c.ellipse(mx,my+5,22,16,0,0,Math.PI*2);c.fill();
+  // Legs
+  [[mx-14,my+18],[mx-5,my+20],[mx+5,my+20],[mx+14,my+18]].forEach(([x,y])=>{
+    c.fillStyle='#d6eeff';c.fillRect(x-4,y,8,18);
+    c.fillStyle='#4aa8cc';c.fillRect(x-4,y+15,8,5);
+  });
+  // Head
+  c.fillStyle='#f0f8ff';c.beginPath();c.ellipse(mx+22,my-18,18,16,0.3,0,Math.PI*2);c.fill();
+  // Ear
+  c.fillStyle='#f0f8ff';c.beginPath();c.moveTo(mx+30,my-30);c.lineTo(mx+36,my-42);c.lineTo(mx+24,my-32);c.fill();
+  c.fillStyle='#ff9de2';c.beginPath();c.moveTo(mx+30,my-31);c.lineTo(mx+34,my-40);c.lineTo(mx+25,my-32);c.fill();
+  // Horn
+  c.fillStyle='#ffe066';c.beginPath();c.moveTo(mx+28,my-34);c.lineTo(mx+22,my-52);c.lineTo(mx+34,my-34);c.fill();
+  c.fillStyle='#ffb700';c.beginPath();c.moveTo(mx+28,my-34);c.lineTo(mx+25,my-46);c.lineTo(mx+22,my-34);c.fill();
+  // Eye
+  c.fillStyle='white';c.beginPath();c.ellipse(mx+28,my-20,5,5,0,0,Math.PI*2);c.fill();
+  c.fillStyle='#4aa8cc';c.beginPath();c.ellipse(mx+29,my-20,3,4,0,0,Math.PI*2);c.fill();
+  c.fillStyle='#1a3a4a';c.beginPath();c.ellipse(mx+29,my-21,1.5,2,0,0,Math.PI*2);c.fill();
+  c.fillStyle='white';c.beginPath();c.arc(mx+28,my-22,1,0,Math.PI*2);c.fill();
+  // Cheek
+  c.fillStyle='rgba(255,179,217,0.6)';c.beginPath();c.ellipse(mx+20,my-14,5,3,0,0,Math.PI*2);c.fill();
+  // Mane
+  [[90,16],[92,22],[87,26]].forEach(([x,y],i)=>{
+    c.fillStyle=['#7ec8e3','#ffe066','#ffffff'][i];
+    c.beginPath();c.ellipse(x,y,5,8,0.3,0,Math.PI*2);c.fill();
+  });
+  // Tail
+  [[60,90],[57,98],[61,106]].forEach(([x,y],i)=>{
+    c.fillStyle=[['#7ec8e3','#ffe066','#ffffff'][i]];
+    c.beginPath();c.ellipse(x,y,4,7,-0.3,0,Math.PI*2);c.fill();
+  });
+  // Magic sparkles
+  c.font='14px serif';
+  c.fillText('✨',12,90);c.fillText('💕',148,75);c.fillText('⭐',14,50);
+
+  return ic.toDataURL('image/png');
+}
+
+function setupPWA(){
+  const iconUrl=generateIcon();
+  // Apple touch icon
+  const linkEl=document.getElementById('apple-icon');
+  if(linkEl) linkEl.href=iconUrl;
+  // Manifest
+  const manifest={
+    name:'PIXELPET 🦄',short_name:'PIXELPET',
+    description:'Ta licorne pixel kawaii !',
+    start_url:'.',display:'standalone',
+    background_color:'#1a0a2e',theme_color:'#1a0a2e',
+    icons:[{src:iconUrl,sizes:'180x180',type:'image/png'}],
+  };
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const manifestEl=document.getElementById('pwa-manifest');
+  if(manifestEl) manifestEl.href=URL.createObjectURL(blob);
+}
+
+
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+loadPlayerName();
+setupPWA();
+// Scrub hint fades after first wash — handled by doWash
 
 </script>
 </body>
