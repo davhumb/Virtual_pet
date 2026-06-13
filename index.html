@@ -241,6 +241,19 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
   </div>
   <div style="text-align:center;font-size:5px;color:rgba(255,157,226,0.25);font-family:'Press Start 2P',monospace;margin-top:10px;letter-spacing:1px">CELLULOÏD SCALPEL PRODUCTION</div>
   
+
+<div id="tutorial-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,1,24,0.97);z-index:600;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:18px">
+  <div id="tut-emoji" style="font-size:42px;text-align:center"></div>
+  <div id="tut-title" style="font-size:9px;color:#ff9de2;text-align:center;text-shadow:0 0 12px #ff9de2;line-height:1.8"></div>
+  <div id="tut-text" style="font-size:7px;color:#d4c0ff;text-align:center;line-height:2.2;white-space:pre-line;max-width:300px"></div>
+  <div id="tut-hint" style="font-size:6px;color:#ffe066;text-align:center;min-height:14px;text-shadow:0 0 8px #ffe066"></div>
+  <div id="tut-progress" style="font-size:8px;color:rgba(255,157,226,0.6);letter-spacing:4px"></div>
+  <div style="display:flex;gap:12px;margin-top:4px">
+    <button onclick="tutorialSkip()" style="background:transparent;border:1px solid #3a2a5a;border-radius:8px;color:#4a3a6a;font-family:'Press Start 2P',monospace;font-size:6px;padding:10px 14px;cursor:pointer">PASSER</button>
+    <button id="tut-next" onclick="tutorialNext()" style="background:rgba(255,157,226,.15);border:2px solid #ff9de2;border-radius:10px;color:#ff9de2;font-family:'Press Start 2P',monospace;font-size:8px;padding:12px 20px;cursor:pointer;text-shadow:0 0 8px #ff9de2">SUIVANT ▶</button>
+  </div>
+</div>
+
 <div id="mine-overlay">
   <div class="mine-topbar">
     <div class="mine-title">💩 DÉMINEUR</div>
@@ -819,6 +832,7 @@ function birthPet(){
   updateUI(); startLoop(); updateQuestUI();
   setTimeout(()=>typeDialogue(getPick(D.intro,pet)),700);
   applyHeritage();
+  setTimeout(()=>showTutorial(),400);
   setTimeout(()=>{ if(pet&&typeof addJournalEntry==='function') addJournalEntry('Je suis née. Je m\'appelle '+pet.name+'. '+(playerName?'Mon gardien s\'appelle '+playerName+'.':'Je ne connais pas encore mon gardien.')+' Le monde est petit mais lumineux.'); },900);
 }
 document.getElementById('name-input').addEventListener('keydown',e=>{if(e.key==='Enter')birthPet();});
@@ -1387,7 +1401,18 @@ function drawCharacter(cx, by, sc, t, mood){
   const walk  = ANIM.mode === 'walk';
   const action= ANIM.mode === 'action' && ANIM.actionT > 0;
   if(action) ANIM.actionT--;
-  const bounce = pet.sleeping ? 0 : Math.sin(t * 1.8) * 1.8;
+
+  // Rainbow easter egg
+  if(typeof rainbowMode!=='undefined'&&rainbowMode&&rainbowTimer>0){
+    rainbowTimer--; if(rainbowTimer<=0) rainbowMode=false;
+    drawRainbowCharacter(cx,by,sc,t,mood); return;
+  }
+  // Special pose overrides
+  if(pet.sleeping){ drawSleepPose(cx,by,sc,t); return; }
+  if(mood==='sick'){ drawSickPose(cx,by,sc,t); return; }
+  if(mood==='great'&&pet.happy>85){ drawHappyPose(cx,by,sc,t); return; }
+
+  const bounce = Math.sin(t * 1.8) * 1.8;
 
   // Couleurs licorne
   const WHITE  = '#f0f8ff';
@@ -2056,6 +2081,7 @@ window.addEventListener('load',()=>{
     document.getElementById('birth-screen').style.display='none';
     document.getElementById('main-device').style.display='block';
     updateUI();startLoop();updateQuestUI();
+    showTutorial();
     const msg=offlineMsg(min);
     setTimeout(()=>typeDialogue(msg||getPick(D.intro,pet)),700);
   }
@@ -2399,6 +2425,7 @@ gc.addEventListener('touchmove',  onTouchMove,  {passive:false});
 function onTouchStart(e){
   if(activeGame) return;
   const pos=canvasCoords(e);
+  if(typeof checkHornTap==='function') checkHornTap(pos.x,pos.y);
   tapStart={x:pos.x,y:pos.y,time:Date.now()};
   tapTime=Date.now();
   scrubPoints=[];
@@ -3914,6 +3941,337 @@ function updateMineGrid(){
       }
     }
   });
+}
+
+
+// ══════════════════════════════════════════════════════
+//  POSES SPÉCIALES
+// ══════════════════════════════════════════════════════
+
+function drawSleepPose(cx, by, sc, t){
+  // Licorne allongée sur le côté — corps horizontal
+  const P = Math.round(7*sc);
+  const WHITE='#f0f8ff', LIGHT='#d6eeff', BLUE='#7ec8e3', BBLUE='#4aa8cc';
+  const MANE1='#7ec8e3', MANE2='#ffe066', MANE3='#ffffff';
+  const GOLD='#ffb700', YELLOW='#ffe066', PINK='#ffb3d9';
+
+  // Corps allongé
+  const bY = by - P*3;
+  for(let py=-2;py<=2;py++){
+    const w = py===0?P*9:py===1||py===-1?P*8:P*6;
+    fillPx(cx-w/2, bY+py*P, w, P, py%2===0?WHITE:LIGHT);
+  }
+  // Tête à droite
+  const hX=cx+P*4, hY=bY-P*2;
+  fillPx(hX-P*2,hY-P*2,P*4,P*4,WHITE);
+  // Yeux fermés — traits
+  ctx.strokeStyle=BBLUE; ctx.lineWidth=Math.max(1,P*0.4);
+  ctx.beginPath();ctx.moveTo(hX-P*1.5,hY-P*0.5);ctx.lineTo(hX-P*0.3,hY-P*0.5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(hX+P*0.2,hY-P*0.5);ctx.lineTo(hX+P*1.4,hY-P*0.5);ctx.stroke();
+  // Petits cils tombants
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.moveTo(hX-P*1.4+i*P*0.5,hY-P*0.5);
+    ctx.lineTo(hX-P*1.2+i*P*0.5,hY+P*0.3);
+    ctx.stroke();
+  }
+  // Joues roses
+  ctx.fillStyle='rgba(255,179,217,0.6)';
+  ctx.beginPath();ctx.ellipse(hX-P*0.5,hY+P*0.5,P*1.2,P*0.6,0,0,Math.PI*2);ctx.fill();
+  // Corne
+  fillPx(hX-P*0.3,hY-P*3.5,P*0.8,P*3,GOLD);
+  fillPx(hX-P*0.1,hY-P*3,P*0.4,P*2,YELLOW);
+  // Crinière flottante
+  [[MANE1,0],[MANE2,P],[MANE3,P*2]].forEach(([c,dx])=>{
+    fillPx(cx-P*3-dx*0.3, bY-P*3+dx*0.1, P, P*3, c);
+  });
+  // Pattes repliées
+  [[cx-P*2,bY+P*2,'left'],[cx+P*1,bY+P*2,'right']].forEach(([lx,ly,side])=>{
+    fillPx(lx,ly,P*1.2,P*1.5,LIGHT);
+    fillPx(lx,ly+P*1.5,P*1.2,P*0.7,BBLUE);
+  });
+  // Queue
+  [[MANE1,0],[MANE2,P*0.6],[MANE3,P*1.2]].forEach(([c,dy])=>{
+    fillPx(cx-P*4.5, bY-P*0.5+dy, P*1.2, P, c);
+  });
+  // Zzz
+  drawZzz(cx+P*2, by-P*4, sc, t);
+}
+
+function drawSickPose(cx, by, sc, t){
+  // Licorne courbée, tête basse, yeux petits et tristes
+  const P = Math.round(7*sc);
+  const WHITE='#d8d0e8', LIGHT='#c0b8d8'; // teinte mauve/grisée
+  const BBLUE='#7a90a0', GOLD='#c09060', YELLOW='#d0a040';
+  const MANE1='#8890a8', MANE2='#c0a860', MANE3='#c8c0d8';
+
+  const wobble = Math.sin(t*3)*P*0.3; // frissons
+  const bounce = Math.sin(t*0.8)*0.5; // respiration lente
+
+  // Queue
+  const tailSwing = Math.sin(t*1.5)*P*0.2;
+  [[MANE1,0],[MANE2,P*0.5],[MANE3,P]].forEach(([c,dy])=>{
+    fillPx(cx-P*2.5+tailSwing, by-P*4+dy+bounce, P, P*2, c);
+  });
+  // Pattes molles
+  fillPx(cx-P*1.5+wobble, by-P*0.5, P*1.2, P*3, LIGHT);
+  fillPx(cx-P*1.5+wobble, by+P*2.5, P*1.2, P*0.8, BBLUE);
+  fillPx(cx+P*0.5-wobble, by-P*0.5, P*1.2, P*3, LIGHT);
+  fillPx(cx+P*0.5-wobble, by+P*2.5, P*1.2, P*0.8, BBLUE);
+  // Corps courbé vers le bas
+  for(let py=-2;py<=3;py++){
+    const w=py===0||py===1?P*5:py===2?P*4.5:P*3.5;
+    const tilt=py*P*0.15; // inclinaison
+    fillPx(cx-w/2+tilt+wobble, by-P*5+py*P+bounce, w, P, py%2===0?WHITE:LIGHT);
+  }
+  // Bras ballants
+  fillPx(cx-P*3+wobble, by-P*4+bounce, P, P*2.5, LIGHT);
+  fillPx(cx-P*4+wobble, by-P*2+bounce, P, P, LIGHT);
+  fillPx(cx+P*2-wobble, by-P*4+bounce, P, P*2.5, LIGHT);
+  fillPx(cx+P*3-wobble, by-P*2+bounce, P, P, LIGHT);
+  // Cou
+  fillPx(cx-P*0.5+wobble, by-P*7+bounce, P*1.5, P*1.5, WHITE);
+  // Tête penchée
+  const hY = by-P*10+bounce+P; // plus basse
+  fillPx(cx-P*2.5+wobble, hY-P*2, P*5, P*4, WHITE);
+  // Yeux petits et cernés
+  const eyeY = hY-P*0.5;
+  fillPx(cx-P*2+wobble, eyeY-P*0.5, P*0.7, P*0.7, '#fff');
+  fillPx(cx+P*0.8+wobble, eyeY-P*0.5, P*0.7, P*0.7, '#fff');
+  fillPx(cx-P*1.8+wobble, eyeY-P*0.3, P*0.4, P*0.4, '#5a6a7a');
+  fillPx(cx+P*1+wobble, eyeY-P*0.3, P*0.4, P*0.4, '#5a6a7a');
+  // Cernes
+  ctx.fillStyle='rgba(120,100,160,0.3)';
+  ctx.beginPath();ctx.ellipse(cx-P*1.5+wobble,eyeY+P*0.3,P*0.8,P*0.3,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(cx+P*1.2+wobble,eyeY+P*0.3,P*0.8,P*0.3,0,0,Math.PI*2);ctx.fill();
+  // Bouche vers le bas
+  fillPx(cx-P*0.5+wobble, hY+P*1.2, P, P*0.4, BBLUE);
+  fillPx(cx-P*1.2+wobble, hY+P*0.8, P*0.5, P*0.5, BBLUE);
+  fillPx(cx+P*0.5+wobble, hY+P*0.8, P*0.5, P*0.5, BBLUE);
+  // Corne terne
+  fillPx(cx-P*0.3+wobble, hY-P*3, P*0.8, P*2.5, GOLD);
+  // Crinière terne
+  [[MANE1,0],[MANE2,P*0.5],[MANE3,P]].forEach(([c,ox])=>{
+    fillPx(cx+P*1.5+ox*0.2+wobble, hY-P*1.5, P, P*3, c);
+  });
+  // Petites étoiles de mal de tête
+  for(let i=0;i<3;i++){
+    const a=t*2+i*2.1, r=P*2.5;
+    const alpha=0.4+Math.sin(t*3+i)*0.3;
+    ctx.globalAlpha=alpha;
+    ctx.font=`${Math.round(P*1.2)}px serif`;
+    ctx.fillText('💫',cx+wobble+Math.cos(a)*r-P,hY-P*3+Math.sin(a)*r);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawHappyPose(cx, by, sc, t){
+  // Licorne super heureuse — bras en l'air, rebondit, étincelles partout
+  const P = Math.round(7*sc);
+  const WHITE='#f0f8ff', LIGHT='#d6eeff', BLUE='#7ec8e3', BBLUE='#4aa8cc';
+  const YELLOW='#ffe066', GOLD='#ffb700', PINK='#ffb3d9', PURPLE='#c084fc';
+  const MANE1='#7ec8e3', MANE2='#ffe066', MANE3='#ffffff';
+
+  const jump = Math.abs(Math.sin(t*3))*P*3; // saut
+  const spin = Math.sin(t*4)*P*0.5; // tremblement de joie
+
+  // Queue qui s'agite vite
+  const tailSwing = Math.sin(t*5)*P*1.5;
+  [[MANE1,0],[MANE2,P*0.7],[MANE3,P*1.4]].forEach(([c,dy])=>{
+    fillPx(cx-P*2.5+tailSwing, by-P*5+dy-jump, P, P*2, c);
+  });
+  // Pattes
+  fillPx(cx-P*1.5+spin, by-P*0.5-jump, P*1.2, P*3, LIGHT);
+  fillPx(cx-P*1.5+spin, by+P*2.5-jump, P*1.2, P*0.8, BBLUE);
+  fillPx(cx+P*0.5-spin, by-P*0.5-jump, P*1.2, P*3, LIGHT);
+  fillPx(cx+P*0.5-spin, by+P*2.5-jump, P*1.2, P*0.8, BBLUE);
+  // Corps
+  for(let py=-2;py<=3;py++){
+    const w=py===0||py===1?P*5:py===2?P*4.5:P*3.5;
+    fillPx(cx-w/2+spin, by-P*5+py*P-jump, w, P, py%2===0?WHITE:LIGHT);
+  }
+  // BRAS EN L'AIR !
+  const armUp = -P*3+Math.sin(t*4)*P*0.5;
+  fillPx(cx-P*4+spin, by-P*5+armUp-jump, P, P*3, LIGHT);
+  fillPx(cx-P*5+spin, by-P*6+armUp-jump, P, P, LIGHT); // main
+  fillPx(cx+P*2-spin, by-P*5+armUp-jump, P, P*3, LIGHT);
+  fillPx(cx+P*3-spin, by-P*6+armUp-jump, P, P, LIGHT); // main
+  // Cou
+  fillPx(cx-P*0.5+spin, by-P*8-jump, P*1.5, P*1.5, WHITE);
+  // Tête
+  const hY = by-P*11+spin-jump;
+  fillPx(cx-P*2.5+spin, hY-P*2, P*5, P*4, WHITE);
+  // Joues très roses
+  ctx.fillStyle='rgba(255,100,150,0.5)';
+  ctx.beginPath();ctx.ellipse(cx-P*1.5+spin,hY+P*0.5,P*1.5,P*0.7,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(cx+P*1.2+spin,hY+P*0.5,P*1.5,P*0.7,0,0,Math.PI*2);ctx.fill();
+  // Yeux en étoile / arc
+  ctx.strokeStyle=BBLUE; ctx.lineWidth=Math.max(1,P*0.5);
+  // Yeux fermés en arc de bonheur
+  ctx.beginPath();ctx.arc(cx-P*1.5+spin,hY-P*0.3,P*0.9,Math.PI,0);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+P*1+spin,hY-P*0.3,P*0.9,Math.PI,0);ctx.stroke();
+  // Grand sourire
+  ctx.strokeStyle=BBLUE; ctx.lineWidth=Math.max(1,P*0.6);
+  ctx.beginPath();ctx.arc(cx+spin,hY+P*0.8,P*1.5,0,Math.PI);ctx.stroke();
+  // Petits traits aux coins
+  ctx.beginPath();ctx.moveTo(cx-P*1.5+spin,hY+P*0.8);ctx.lineTo(cx-P*2+spin,hY+P*0.3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+P*1.5+spin,hY+P*0.8);ctx.lineTo(cx+P*2+spin,hY+P*0.3);ctx.stroke();
+  // Corne qui brille
+  fillPx(cx-P*0.3+spin, hY-P*3.5, P*0.8, P*3, GOLD);
+  ctx.shadowColor='#ffe066'; ctx.shadowBlur=10;
+  fillPx(cx-P*0.1+spin, hY-P*3, P*0.5, P*2, YELLOW);
+  ctx.shadowBlur=0;
+  // Crinière folle
+  [[MANE1,-P],[MANE2,0],[MANE3,P]].forEach(([c,ox])=>{
+    const wave = Math.sin(t*6+ox)*P*0.5;
+    fillPx(cx+P*1.8+ox*0.2+spin, hY-P*1.5+wave, P, P*3.5, c);
+  });
+  // Confettis autour
+  const confettiCols=['#ff9de2','#ffe066','#7ec8e3','#c084fc','#a8ff78'];
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2+t*2;
+    const r=P*5+Math.sin(t*3+i)*P;
+    const cx2=cx+Math.cos(a)*r, cy2=(by-P*6-jump)+Math.sin(a)*r;
+    ctx.fillStyle=confettiCols[i%5];
+    ctx.font=`${Math.round(P*0.8)}px serif`;
+    ctx.fillText(['✨','💕','⭐','🌸'][i%4],cx2-4,cy2);
+  }
+  // Shadow au sol (plus bas que le saut)
+  const shadowScale=Math.max(0.3,1-jump/(P*4));
+  ctx.fillStyle=`rgba(180,140,255,${0.1*shadowScale})`;
+  ctx.beginPath();ctx.ellipse(cx,by+2,18*sc*shadowScale,4*shadowScale,0,0,Math.PI*2);ctx.fill();
+}
+
+// ══════════════════════════════════════════════════════
+//  EASTER EGG — LICORNE ARC-EN-CIEL
+// ══════════════════════════════════════════════════════
+let hornTapCount = 0, hornTapTimer = null, rainbowMode = false, rainbowTimer = 0;
+const RAINBOW_COLS = ['#ff6eb4','#ff9de2','#ffb347','#ffe066','#a8ff78','#7ec8e3','#c084fc'];
+
+function checkHornTap(canvasX, canvasY){
+  if(!pet||!pet.alive) return;
+  // Horn is roughly at cx + P*0 to P*1, headtop - P*3
+  const sc = pet.stage==='bébé'?0.75:pet.stage==='enfant'?0.88:pet.stage==='ancien'?1.05:1.0;
+  const P = Math.round(7*sc);
+  const cx = CW/2 + (ANIM?ANIM.walkX:0);
+  const by = CH-22;
+  const hornX = cx, hornY = by - P*13;
+  const dist = Math.hypot(canvasX-hornX, canvasY-hornY);
+  if(dist < P*3){
+    hornTapCount++;
+    clearTimeout(hornTapTimer);
+    hornTapTimer = setTimeout(()=>{ hornTapCount=0; },1500);
+    if(hornTapCount >= 5){
+      hornTapCount=0;
+      activateRainbowMode();
+    }
+  }
+}
+
+function activateRainbowMode(){
+  rainbowMode=true; rainbowTimer=300; // ~5s at 60fps
+  spawnParticles('star',CW/2,CH/3,20);
+  playSound('levelup');
+  vibrate([50,30,50,30,50,30,100]);
+  typeDialogue('✨ MODE ARC-EN-CIEL ! Tu as découvert mon secret ! 🌈🦄',true);
+  if(pet) addJournalEntry('J\'ai brillé de mille couleurs arc-en-ciel ! Mon gardien a découvert mon secret. ✨');
+}
+
+// Rainbow mode integrated inline in drawCharacter above
+
+function drawRainbowCharacter(cx, by, sc, t, mood){
+  // Temporarily disable rainbow to draw base character without recursion
+  const _rm=rainbowMode; rainbowMode=false;
+  drawCharacter(cx, by, sc, t, mood);
+  rainbowMode=_rm;
+  // Rainbow shimmer overlay
+  const alpha = 0.3 + Math.sin(t*4)*0.1;
+  for(let i=0;i<RAINBOW_COLS.length;i++){
+    const a = (i/RAINBOW_COLS.length)*Math.PI*2 + t*3;
+    const r = Math.round(7*sc)*4;
+    ctx.fillStyle = `rgba(${hexRgb(RAINBOW_COLS[i])},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx+Math.cos(a)*r, (by-Math.round(7*sc)*5)+Math.sin(a)*r*0.5, Math.round(7*sc)*0.8, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Rainbow trail behind
+  RAINBOW_COLS.forEach((c,i)=>{
+    const trailX = cx - (ANIM?ANIM.walkX*0.3:0) - i*3;
+    ctx.fillStyle=`rgba(${hexRgb(c)},${0.15-i*0.02})`;
+    ctx.beginPath();ctx.ellipse(trailX,(by-Math.round(7*sc)*4),12-i,4,0,0,Math.PI*2);ctx.fill();
+  });
+}
+
+// Horn tap check integrated inline
+
+// ══════════════════════════════════════════════════════
+//  TUTORIEL
+// ══════════════════════════════════════════════════════
+const TUTORIAL_KEY = 'pixelpet_tutorial_done';
+let tutorialStep = 0;
+const TUTORIAL_STEPS = [
+  {
+    emoji:'🦄',
+    title:'BIENVENUE !',
+    text:'Voici ta licorne pixel.\nElle a besoin de toi pour vivre et grandir.',
+    hint:'',
+  },
+  {
+    emoji:'🥜💧💊',
+    title:'PRENDS SOIN D\'ELLE',
+    text:'Glisse les icônes sur la licorne pour la nourrir, laver ou soigner.\nOu utilise les boutons en bas.',
+    hint:'↓ GLISSE CES ICÔNES SUR ELLE ↓',
+  },
+  {
+    emoji:'💬❤️✨',
+    title:'PARLE LUI !',
+    text:'Tape sur elle pour un câlin 💕\nAppui long pour la caresser ✨\nFrotte avec le savon 🧼 pour la laver',
+    hint:'',
+  },
+  {
+    emoji:'🥁🧠💩',
+    title:'MINI-JEUX',
+    text:'Joue au Rythme, Memory ou Démineur pour gagner de l\'XP et la rendre heureuse !',
+    hint:'',
+  },
+  {
+    emoji:'💾',
+    title:'SAUVEGARDE AUTO',
+    text:'Ton aventure est sauvegardée automatiquement.\nReviens chaque jour — elle t\'attend ! 🌙',
+    hint:'',
+  },
+];
+
+function showTutorial(){
+  try{ if(localStorage.getItem(TUTORIAL_KEY)) return; }catch(e){}
+  tutorialStep=0;
+  renderTutorialStep();
+  document.getElementById('tutorial-overlay').style.display='flex';
+}
+function tutorialNext(){
+  tutorialStep++;
+  if(tutorialStep>=TUTORIAL_STEPS.length){
+    document.getElementById('tutorial-overlay').style.display='none';
+    try{localStorage.setItem(TUTORIAL_KEY,'1');}catch(e){}
+    return;
+  }
+  renderTutorialStep();
+}
+function tutorialSkip(){
+  document.getElementById('tutorial-overlay').style.display='none';
+  try{localStorage.setItem(TUTORIAL_KEY,'1');}catch(e){}
+}
+function renderTutorialStep(){
+  const step = TUTORIAL_STEPS[tutorialStep];
+  const el = document.getElementById('tutorial-overlay');
+  document.getElementById('tut-emoji').textContent=step.emoji;
+  document.getElementById('tut-title').textContent=step.title;
+  document.getElementById('tut-text').textContent=step.text;
+  document.getElementById('tut-hint').textContent=step.hint;
+  document.getElementById('tut-progress').textContent=
+    Array.from({length:TUTORIAL_STEPS.length},(_,i)=>i===tutorialStep?'●':'○').join(' ');
+  document.getElementById('tut-next').textContent=
+    tutorialStep===TUTORIAL_STEPS.length-1?'🦄 JOUER !':'SUIVANT ▶';
 }
 
 </script>
