@@ -72,7 +72,7 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
 .btn.b-game{border-color:#3a2a5a;color:#ff9de2}
 .btn.b-game.active-game{border-color:#ff6eb4;color:#ff6eb4}
 /* GAMES ROW */
-.games-row{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-top:5px}
+.games-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:5px}
 /* TALK */
 .talk-area{margin-top:8px;display:none}
 .talk-area.open{display:flex;gap:6px}
@@ -115,6 +115,27 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
 .scrub-hint{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);font-size:6px;color:rgba(255,157,226,0.5);font-family:'Press Start 2P',monospace;pointer-events:none;z-index:12;white-space:nowrap}
 /* PLAYER NAME BADGE */
 #player-badge{position:absolute;bottom:8px;right:10px;font-size:5px;color:rgba(255,224,102,0.6);font-family:'Press Start 2P',monospace;z-index:12;pointer-events:none}
+
+/* MINESWEEPER */
+#mine-overlay{position:fixed;inset:0;background:rgba(10,1,24,0.97);z-index:200;display:none;flex-direction:column;align-items:center;padding:16px 10px;overflow-y:auto}
+#mine-overlay.open{display:flex}
+.mine-topbar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:360px;margin-bottom:12px}
+.mine-title{font-size:8px;color:#ff9de2;text-shadow:0 0 8px #ff9de2}
+.mine-info{font-size:7px;color:#ffe066;display:flex;gap:12px;align-items:center}
+.mine-face{font-size:26px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mine-levels{display:flex;gap:8px;margin-bottom:12px}
+.mine-lvl-btn{background:rgba(255,157,226,.1);border:2px solid #ff9de2;border-radius:8px;color:#ff9de2;font-family:'Press Start 2P',monospace;font-size:6px;padding:7px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mine-lvl-btn.active{background:rgba(255,157,226,.25);border-color:#ffe066;color:#ffe066}
+.mine-grid{display:grid;gap:3px;margin:0 auto}
+.mine-cell{display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-family:'Press Start 2P',monospace;font-weight:bold;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .08s;user-select:none}
+.mine-cell:active{transform:scale(.9)}
+.mine-cell.hidden{background:#2d1b4e;border:2px solid #4a2a6a}
+.mine-cell.hidden:active{background:#3d2b5e}
+.mine-cell.revealed{background:#1a0a2e;border:2px solid #2a1a3e}
+.mine-cell.flagged{background:#2d1b4e;border:2px solid #ffe066}
+.mine-cell.boom{background:#3a0a0a;border:2px solid #ff2244}
+.mine-close{background:rgba(255,34,68,.1);border:2px solid #ff2244;border-radius:8px;color:#ff2244;font-family:'Press Start 2P',monospace;font-size:7px;padding:8px 14px;cursor:pointer;margin-top:14px;-webkit-tap-highlight-color:transparent}
+.mine-result{font-size:8px;text-align:center;line-height:2;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -171,14 +192,14 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
     </div>
   </div>
   <div id="drag-zone" style="display:flex;justify-content:center;gap:18px;margin:8px 0 4px">
-    <div class="drag-icon" id="drag-food"  style="font-size:34px;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 0 6px #ffe066)" title="Glisse sur la licorne">🍖</div>
+    <div class="drag-icon" id="drag-food"  style="font-size:34px;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 0 6px #ffe066)" title="Glisse sur la licorne">🥜</div>
     <div class="drag-icon" id="drag-soap"  style="font-size:34px;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 0 6px #7ec8e3)" title="Frotte sur la licorne">🧼</div>
     <div class="drag-icon" id="drag-med"   style="font-size:34px;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 0 6px #ff6eb4)" title="Donne à la licorne">💊</div>
     <div class="drag-icon" id="drag-gift"  style="font-size:34px;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 0 6px #a855f7)" title="Offre à la licorne">🎁</div>
   </div>
   <div style="text-align:center;font-size:5px;color:rgba(255,157,226,0.4);font-family:'Press Start 2P',monospace;margin-bottom:4px">GLISSE SUR LA LICORNE</div>
   <div class="stats">
-    <div class="stat"><div class="stat-label">🍖 FAIM</div><div class="stat-bar-wrap"><div class="stat-bar bar-hunger" id="bar-hunger" style="width:80%"></div></div></div>
+    <div class="stat"><div class="stat-label">🥜 FAIM</div><div class="stat-bar-wrap"><div class="stat-bar bar-hunger" id="bar-hunger" style="width:80%"></div></div></div>
     <div class="stat"><div class="stat-label">💜 HUMEUR</div><div class="stat-bar-wrap"><div class="stat-bar bar-happy" id="bar-happy" style="width:70%"></div></div></div>
     <div class="stat"><div class="stat-label">⚡ ÉNERGIE</div><div class="stat-bar-wrap"><div class="stat-bar bar-energy" id="bar-energy" style="width:90%"></div></div></div>
     <div class="stat"><div class="stat-label">🔗 LIEN</div><div class="stat-bar-wrap"><div class="stat-bar bar-bond" id="bar-bond" style="width:5%"></div></div></div>
@@ -190,7 +211,7 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
     <div class="status-dot" id="status-dot"></div>
   </div>
   <div class="actions">
-    <button class="btn b-feed"  onclick="doAction('feed')"><span class="icon">🍖</span>NOURRIR</button>
+    <button class="btn b-feed"  onclick="doAction('feed')"><span class="icon">🥜</span>NOURRIR</button>
     <button class="btn b-play"  onclick="doAction('play')"><span class="icon">🎮</span>JOUER</button>
     <button class="btn b-sleep" onclick="doAction('sleep')"><span class="icon">💤</span>DORMIR</button>
     <button class="btn b-wash"  onclick="doAction('wash')"><span class="icon">🚿</span>LAVER</button>
@@ -202,6 +223,7 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
   <div class="games-row">
     <button class="btn b-game" id="btn-rhythm" onclick="startRhythm()"><span class="icon">🥁</span>RYTHME</button>
     <button class="btn b-game" id="btn-memory" onclick="startMemory()"><span class="icon">🧠</span>MEMORY</button>
+    <button class="btn b-game" id="btn-mine" onclick="startMine()"><span class="icon">💩</span>DÉMINEUR</button>
   </div>
   <div class="inv-panel" id="inv-panel">
     <div class="inv-title">🎒 INVENTAIRE</div>
@@ -218,7 +240,27 @@ canvas#gc{display:block;width:100%;image-rendering:pixelated;cursor:pointer}
     <div id="journal-entries" style="font-size:7px;color:#d4c0ff;line-height:2"></div>
   </div>
   <div style="text-align:center;font-size:5px;color:rgba(255,157,226,0.25);font-family:'Press Start 2P',monospace;margin-top:10px;letter-spacing:1px">CELLULOÏD SCALPEL PRODUCTION</div>
-  <div id="reset-modal" style="display:none;position:fixed;inset:0;background:rgba(10,1,24,0.95);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px">
+  
+<div id="mine-overlay">
+  <div class="mine-topbar">
+    <div class="mine-title">💩 DÉMINEUR</div>
+    <div class="mine-info">
+      <span id="mine-flag-count">🚩0</span>
+      <span id="mine-face" class="mine-face" onclick="mineReset()">🦄</span>
+      <span id="mine-timer">⏱0</span>
+    </div>
+  </div>
+  <div class="mine-levels">
+    <button class="mine-lvl-btn active" onclick="setMineLevel(0)">6×6</button>
+    <button class="mine-lvl-btn" onclick="setMineLevel(1)">8×8</button>
+    <button class="mine-lvl-btn" onclick="setMineLevel(2)">10×10</button>
+  </div>
+  <div id="mine-result" class="mine-result" style="display:none"></div>
+  <div id="mine-grid" class="mine-grid"></div>
+  <button class="mine-close" onclick="closeMine()">✖ FERMER</button>
+</div>
+
+<div id="reset-modal" style="display:none;position:fixed;inset:0;background:rgba(10,1,24,0.95);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px">
     <div style="font-size:8px;color:#ff2244;text-align:center;line-height:2;text-shadow:0 0 12px #ff2244">⚠️ RESET TOTAL<br>TOUT SERA PERDU</div>
     <div style="font-size:7px;color:#888;text-align:center;line-height:2">Progression, journal,<br>inventaire, licorne.</div>
     <div style="display:flex;gap:12px">
@@ -822,7 +864,7 @@ function tick(){
   if(pet.sleeping){
     pet.energy=Math.min(100,pet.energy+15);
     pet.hunger=Math.max(0,pet.hunger-3);
-    if(pet.energy>=100){pet.sleeping=false;typeDialogue(getPick(D.slept,pet));}
+    if(pet.energy>=100){pet.sleeping=false;typeDialogue(getPick(D.slept,pet,true));}
     updateUI();return;
   }
   pet.age++;
@@ -832,7 +874,7 @@ function tick(){
   pet.happy  =Math.max(0,pet.happy  -(3+Math.random()*3)*decayMult);
   pet.energy =Math.max(0,pet.energy -(2+Math.random()*2)*decayMult);
   pet.clean  =Math.max(0,pet.clean  -(2+Math.random()*2)*decayMult);
-  if(pet.clean<20&&pet.hunger<20&&Math.random()<.15){pet.sick=true;pet.health=Math.max(0,pet.health-8);typeDialogue(getPick(D.sick,pet));}
+  if(pet.clean<20&&pet.hunger<20&&Math.random()<.15){pet.sick=true;pet.health=Math.max(0,pet.health-8);typeDialogue(getPick(D.sick,pet,true));}
   else if(pet.sick) pet.health=Math.max(0,pet.health-3);
   if(pet.hunger<20||pet.happy<20) pet.bond=Math.max(0,pet.bond-1);
   const prev=pet.stage;
@@ -842,13 +884,13 @@ function tick(){
   if(pet.stage!==prev){typeDialogue(getPick(D[`evolve_${pet.stage}`],pet));updateUI();return;}
   if(pet.health<=0||(pet.hunger<=0&&pet.energy<=0)){killPet();return;}
   MEM.silenceTicks++;
-  if(MEM.silenceTicks>5&&Math.random()<.4){typeDialogue(getPick(D.silence,pet));MEM.silenceTicks=0;}
-  else if(Math.random()<.22) spontaneous();
+  if(MEM.silenceTicks>12&&Math.random()<.3){typeDialogue(getPick(D.silence,pet));MEM.silenceTicks=0;}
+  else if(Math.random()<.08) spontaneous();
   gainXP(2);
   trySpawnQuest();
   if(MEM.silenceTicks>6)petMem.daysWithoutTalk=Math.min(99,petMem.daysWithoutTalk+1);
-  if(Math.random()<.05){const l=memLine();if(l)setTimeout(()=>typeDialogue(l),500);}
-  if(Math.random()<.07)setTimeout(()=>typeDialogue(personalityLine()),1000);
+  if(Math.random()<.03){const l=memLine();if(l)setTimeout(()=>typeDialogue(l),500);}
+  // personality spontaneous removed — too chatty
   if(typeof tryDailyEvent==='function') tryDailyEvent();
   if(pet&&pet.sick&&Math.random()<0.05&&typeof journalSick==='function') journalSick();
   updateUI();
@@ -917,14 +959,14 @@ function doAction(a){
     pet.hunger=Math.min(100,pet.hunger+32);pet.energy=Math.min(100,pet.energy+4);pet.bond=Math.min(100,pet.bond+3);
     gainXP(8); MEM.feedCount++;
     petMem.feedTotal++;shiftP('gourmand',3);petMem.daysWithoutFeed=0;updateFav();
-    typeDialogue(getPick(full?D.fed_full:D.fed_ok,pet));
+    typeDialogue(getPick(full?D.fed_full:D.fed_ok,pet,true));
     checkQ('feedtotal');
   } else if(a==='play'){
     if(pet.energy<18){typeDialogue(getPick(D.tired_crit,pet));return;}
     pet.happy=Math.min(100,pet.happy+28);pet.energy=Math.max(0,pet.energy-14);pet.bond=Math.min(100,pet.bond+5);
     gainXP(10);
     petMem.playTotal++;shiftP('hyperactif',3);shiftP('cynique',-1);updateFav();
-    typeDialogue(getPick(D.played,pet));
+    typeDialogue(getPick(D.played,pet,true));
     journalAction('play');
     checkQ('play');
   } else if(a==='sleep'){
@@ -937,7 +979,7 @@ function doAction(a){
     if(pet.sick&&pet.clean>60){pet.sick=false;pet.health=Math.min(100,pet.health+15);}
     gainXP(6);
     petMem.washTotal++;updateFav();
-    typeDialogue(getPick(dirty?D.washed_dirty:D.washed_clean,pet));
+    typeDialogue(getPick(dirty?D.washed_dirty:D.washed_clean,pet,true));
     journalAction('wash');
     checkQ('wash');
   } else if(a==='heal'){
@@ -945,7 +987,7 @@ function doAction(a){
     pet.health=Math.min(100,pet.health+40);pet.sick=false;pet.bond=Math.min(100,pet.bond+3);
     gainXP(12);
     petMem.healTotal++;
-    typeDialogue(getPick(D.healed,pet));
+    typeDialogue(getPick(D.healed,pet,true));
     journalAction('heal');
     checkQ('heal');
   } else if(a==='gift'){
@@ -1714,11 +1756,32 @@ function updateUI(){
   updateXPBar();
 }
 
-function typeDialogue(text){
+let _dialogueBusy=false;
+let _dialogueQueue=[];
+function typeDialogue(text,force=false){
+  if(_dialogueBusy&&!force){
+    // Queue max 1 pending — drop if already one waiting
+    _dialogueQueue=[text];
+    return;
+  }
   const el=document.getElementById('dialogue-text');
   clearTimeout(typingTO);el.innerHTML='';let i=0;
   playSound('talk');
-  function type(){if(i<text.length){el.innerHTML=text.slice(0,i+1)+'<span class="typing-cursor"></span>';i++;typingTO=setTimeout(type,20+Math.random()*14);}else el.innerHTML=text;}
+  _dialogueBusy=true;
+  function type(){
+    if(i<text.length){
+      el.innerHTML=text.slice(0,i+1)+'<span class="typing-cursor"></span>';
+      i++;typingTO=setTimeout(type,20+Math.random()*14);
+    } else {
+      el.innerHTML=text;
+      _dialogueBusy=false;
+      // Process queue
+      if(_dialogueQueue.length){
+        const next=_dialogueQueue.shift();
+        setTimeout(()=>typeDialogue(next),1200);
+      }
+    }
+  }
   type();
 }
 function toggleTalk(){const a=document.getElementById('talk-area');a.classList.toggle('open');if(a.classList.contains('open'))setTimeout(()=>document.getElementById('talk-input').focus(),100);}
@@ -2293,7 +2356,7 @@ function drawParticles(){
       ctx.fillText('✨',p.x-p.size/2,p.y);
     } else if(p.type==='food'){
       ctx.font=`${Math.round(p.size)}px serif`;
-      ctx.fillText('🍖',p.x-p.size/2,p.y);
+      ctx.fillText('🥜',p.x-p.size/2,p.y);
     } else if(p.type==='sparkle'){
       ctx.fillStyle=`rgba(255,224,102,${alpha})`;
       ctx.beginPath();ctx.arc(p.x,p.y,p.size*.3,0,Math.PI*2);ctx.fill();
@@ -2442,7 +2505,7 @@ function doWash(){
 // ── DRAG & DROP — rewrite propre ──────────────────────
 // Tout en coordonnées ÉCRAN (clientX/clientY), pas canvas
 let dragAction=null, dragElem=null, dragScrubCount=0, dragLastX=0, dragLastY=0;
-const DRAG_EMOJIS={feed:'🍖',wash:'🧼',heal:'💊',gift:'🎁'};
+const DRAG_EMOJIS={feed:'🥜',wash:'🧼',heal:'💊',gift:'🎁'};
 
 function initDragIcons(){
   const map={'drag-food':'feed','drag-soap':'wash','drag-med':'heal','drag-gift':'gift'};
@@ -3587,6 +3650,270 @@ function doReset(){
   keys.forEach(k=>{ try{localStorage.removeItem(k);}catch(e){} });
   // Hard reload
   location.reload();
+}
+
+
+// ══════════════════════════════════════════════════════
+//  💩 DÉMINEUR KAWAII
+// ══════════════════════════════════════════════════════
+const MINE_LEVELS = [
+  {cols:6,  rows:6,  mines:6,  cellSize:44},
+  {cols:8,  rows:8,  mines:12, cellSize:36},
+  {cols:10, rows:10, mines:18, cellSize:30},
+];
+const MINE_NUM_COLORS = ['','#ffe066','#7ec8e3','#ff9de2','#c084fc','#ff6eb4','#39e5ff','#ffffff','#aaaaaa'];
+
+const MINE = {
+  level: 0,
+  cols: 6, rows: 6, mines: 6,
+  board: [],      // {mine, revealed, flagged, count}
+  gameState: 'idle', // idle | playing | won | lost
+  firstClick: true,
+  timerInterval: null,
+  seconds: 0,
+  flagsLeft: 6,
+  longPressTimer: null,
+};
+
+function startMine(){
+  document.getElementById('mine-overlay').classList.add('open');
+  if(MINE.gameState==='idle') mineReset();
+}
+function closeMine(){
+  document.getElementById('mine-overlay').classList.remove('open');
+  if(MINE.timerInterval){ clearInterval(MINE.timerInterval); MINE.timerInterval=null; }
+}
+
+function setMineLevel(lv){
+  MINE.level=lv;
+  document.querySelectorAll('.mine-lvl-btn').forEach((b,i)=>{
+    b.classList.toggle('active',i===lv);
+  });
+  mineReset();
+}
+
+function mineReset(){
+  const {cols,rows,mines,cellSize}=MINE_LEVELS[MINE.level];
+  MINE.cols=cols; MINE.rows=rows; MINE.mines=mines;
+  MINE.gameState='idle'; MINE.firstClick=true;
+  MINE.seconds=0; MINE.flagsLeft=mines;
+  if(MINE.timerInterval){ clearInterval(MINE.timerInterval); MINE.timerInterval=null; }
+
+  // Init empty board
+  MINE.board=[];
+  for(let i=0;i<rows*cols;i++) MINE.board.push({mine:false,revealed:false,flagged:false,count:0});
+
+  document.getElementById('mine-face').textContent='🦄';
+  document.getElementById('mine-timer').textContent='⏱0';
+  document.getElementById('mine-flag-count').textContent='🚩'+mines;
+  document.getElementById('mine-result').style.display='none';
+  renderMineGrid(cellSize);
+}
+
+function placeMines(firstIdx){
+  const {cols,rows,mines}=MINE;
+  // Neighbours of first click are safe
+  const safe=new Set([firstIdx,...mineNeighbours(firstIdx)]);
+  let placed=0;
+  while(placed<mines){
+    const idx=Math.floor(Math.random()*rows*cols);
+    if(!MINE.board[idx].mine&&!safe.has(idx)){
+      MINE.board[idx].mine=true; placed++;
+    }
+  }
+  // Compute counts
+  for(let i=0;i<rows*cols;i++){
+    if(MINE.board[i].mine) continue;
+    MINE.board[i].count=mineNeighbours(i).filter(n=>MINE.board[n].mine).length;
+  }
+}
+
+function mineNeighbours(idx){
+  const {cols,rows}=MINE;
+  const r=Math.floor(idx/cols), c=idx%cols;
+  const nb=[];
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+    if(dr===0&&dc===0) continue;
+    const nr=r+dr, nc=c+dc;
+    if(nr>=0&&nr<rows&&nc>=0&&nc<cols) nb.push(nr*cols+nc);
+  }
+  return nb;
+}
+
+function mineReveal(idx){
+  if(MINE.gameState==='won'||MINE.gameState==='lost') return;
+  const cell=MINE.board[idx];
+  if(cell.revealed||cell.flagged) return;
+
+  if(MINE.firstClick){
+    MINE.firstClick=false;
+    placeMines(idx);
+    MINE.gameState='playing';
+    MINE.timerInterval=setInterval(()=>{
+      MINE.seconds++;
+      document.getElementById('mine-timer').textContent='⏱'+MINE.seconds;
+    },1000);
+    document.getElementById('mine-face').textContent='😤';
+  }
+
+  // Boom!
+  if(cell.mine){
+    cell.revealed=true;
+    MINE.gameState='lost';
+    clearInterval(MINE.timerInterval);
+    MINE.timerInterval=null;
+    // Reveal all mines
+    MINE.board.forEach((c2,i)=>{ if(c2.mine) c2.revealed=true; });
+    document.getElementById('mine-face').textContent='💀';
+    vibrate([100,50,100,50,100]);
+    playSound('hit');
+    updateMineGrid();
+    setTimeout(()=>showMineResult(false),400);
+    return;
+  }
+
+  // Flood fill for empty cells
+  const toReveal=[idx];
+  while(toReveal.length){
+    const cur=toReveal.pop();
+    if(MINE.board[cur].revealed) continue;
+    MINE.board[cur].revealed=true;
+    if(MINE.board[cur].count===0){
+      mineNeighbours(cur).forEach(n=>{
+        if(!MINE.board[n].revealed&&!MINE.board[n].flagged&&!MINE.board[n].mine)
+          toReveal.push(n);
+      });
+    }
+  }
+  vibrate([15]);
+  checkMineWin();
+  updateMineGrid();
+}
+
+function mineFlag(idx){
+  if(MINE.gameState==='won'||MINE.gameState==='lost') return;
+  const cell=MINE.board[idx];
+  if(cell.revealed) return;
+  if(cell.flagged){
+    cell.flagged=false; MINE.flagsLeft++;
+  } else {
+    if(MINE.flagsLeft<=0) return;
+    cell.flagged=true; MINE.flagsLeft--;
+  }
+  vibrate([20]);
+  document.getElementById('mine-flag-count').textContent='🚩'+MINE.flagsLeft;
+  updateMineGrid();
+}
+
+function checkMineWin(){
+  const {board,mines,cols,rows}=MINE;
+  const revealed=board.filter(c=>c.revealed&&!c.mine).length;
+  if(revealed===rows*cols-mines){
+    MINE.gameState='won';
+    clearInterval(MINE.timerInterval); MINE.timerInterval=null;
+    // Auto-flag remaining
+    board.forEach(c=>{if(!c.revealed) c.flagged=true;});
+    MINE.flagsLeft=0;
+    document.getElementById('mine-flag-count').textContent='🚩0';
+    document.getElementById('mine-face').textContent='🎉';
+    vibrate([50,20,50,20,100]);
+    playSound('levelup');
+    updateMineGrid();
+    setTimeout(()=>showMineResult(true),400);
+  }
+}
+
+function showMineResult(won){
+  const el=document.getElementById('mine-result');
+  el.style.display='block';
+  const xpGain=won?Math.max(20,50-MINE.seconds):5;
+  if(won){
+    el.style.color='#ffe066';
+    el.innerHTML='🎉 GAGNÉ !<br>'+MINE.seconds+'s — +'+xpGain+' XP';
+    if(pet&&pet.alive){
+      gainXP(xpGain); pet.happy=Math.min(100,pet.happy+15); pet.bond=Math.min(100,pet.bond+5);
+      setTimeout(()=>typeDialogue(getPick([
+        'Tu as trouvé toutes les crottes ! Je suis fière de toi. 🌸',
+        'Aucune crotte touchée ! Incroyable. 🦄✨',
+        'Championne du démineur ! +'+xpGain+' XP !',
+        'Tu as évité toutes les 💩 ! Talent pur.',
+      ],pet),true),300);
+      addJournalEntry('On a gagné au démineur en '+MINE.seconds+' secondes !');
+      updateUI();
+    }
+  } else {
+    el.style.color='#ff9de2';
+    el.innerHTML='💩 BOOM !<br>Mieux la prochaine fois !';
+    if(pet&&pet.alive){
+      gainXP(xpGain);
+      setTimeout(()=>typeDialogue(getPick([
+        'Oh non ! Une crotte 💩 ! Ça arrive. On réessaie ?',
+        'BOOM ! Les crottes ont gagné cette fois.',
+        'Une 💩 cachée. Je l\'avais pas vue non plus.',
+        'Aïe. Retente ! Tu peux le faire. 🌸',
+      ],pet),true),300);
+    }
+  }
+}
+
+// ── RENDER ──────────────────────────────────────────
+function renderMineGrid(cellSize){
+  const {cols,rows}=MINE;
+  const grid=document.getElementById('mine-grid');
+  grid.style.gridTemplateColumns=`repeat(${cols},${cellSize}px)`;
+  grid.innerHTML='';
+  for(let i=0;i<rows*cols;i++){
+    const cell=document.createElement('div');
+    cell.className='mine-cell hidden';
+    cell.style.width=cellSize+'px';
+    cell.style.height=cellSize+'px';
+    cell.style.fontSize=Math.round(cellSize*0.42)+'px';
+    cell.dataset.idx=i;
+    // Tap = reveal
+    cell.addEventListener('click',()=>mineReveal(i));
+    // Long press = flag
+    cell.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      MINE.longPressTimer=setTimeout(()=>{ mineFlag(i); MINE.longPressTimer=null; },450);
+    },{passive:false});
+    cell.addEventListener('touchend',()=>{
+      if(MINE.longPressTimer){ clearTimeout(MINE.longPressTimer); MINE.longPressTimer=null; mineReveal(i); }
+    });
+    cell.addEventListener('contextmenu',e=>{ e.preventDefault(); mineFlag(i); });
+    grid.appendChild(cell);
+  }
+}
+
+function updateMineGrid(){
+  const cells=document.querySelectorAll('.mine-cell');
+  cells.forEach((cell,i)=>{
+    const c=MINE.board[i];
+    const cs=parseInt(cell.style.width);
+    cell.className='mine-cell';
+    cell.textContent='';
+    if(c.flagged&&!c.revealed){
+      cell.classList.add('flagged'); cell.textContent='🚩';
+    } else if(!c.revealed){
+      cell.classList.add('hidden'); cell.textContent='🌸';
+      cell.style.fontSize=Math.round(cs*0.5)+'px';
+    } else if(c.mine){
+      cell.classList.add('boom'); cell.textContent='💩';
+      cell.style.fontSize=Math.round(cs*0.5)+'px';
+    } else {
+      cell.classList.add('revealed');
+      if(c.count>0){
+        cell.textContent=c.count;
+        cell.style.color=MINE_NUM_COLORS[c.count]||'#fff';
+        cell.style.fontSize=Math.round(cs*0.42)+'px';
+        cell.style.fontWeight='bold';
+        cell.style.textShadow=`0 0 6px ${MINE_NUM_COLORS[c.count]||'#fff'}`;
+      } else {
+        cell.textContent='✨';
+        cell.style.fontSize=Math.round(cs*0.4)+'px';
+        cell.style.color='rgba(255,157,226,0.3)';
+      }
+    }
+  });
 }
 
 </script>
