@@ -1,496 +1,384 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>BEATBOX // GRID</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Emcee Battle — 90's Edition</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo+Black&display=swap');
+  :root {
+    --ink: #0A0A0A;
+    --paper: #F0EBE0;
+    --gold: #D4A017;
+    --brick: #B33A1E;
+    --moss: #4A5D3A;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
 
-  :root{
-    --bg:#0d0f0c;
-    --panel:#15180f;
-    --line:#2a2f1e;
-    --amber:#e8c547;
-    --amber-dim:#5c5320;
-    --red:#e0483e;
-    --green:#5fae6b;
-    --cyan:#5ba3a0;
-    --text:#d8d6c8;
-    --text-dim:#6b6a5c;
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 1.1rem 1.4rem;
+    border-bottom: 3px solid var(--gold);
   }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{
-    margin:0;background:var(--bg);color:var(--text);
-    font-family:'Space Mono',monospace;
-    min-height:100vh;
-    overflow-x:hidden;
+  .header-tag {
+    font-family: -apple-system, BlinkMacSystemFont, 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-stretch: condensed;
+    font-size: 1.3rem;
+    letter-spacing: 0.02em;
+    color: var(--paper);
   }
-  body{
+  .header-era {
+    font-size: 0.75rem;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .duel {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    min-height: 0;
+  }
+  @media (max-width: 720px) {
+    .duel { flex-direction: column; }
+  }
+
+  .side {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.2rem;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--paper);
+    background: #141412;
+    transition: background 160ms ease, transform 160ms ease;
+    overflow: hidden;
+  }
+  .side--left { border-right: 2px solid var(--gold); }
+  @media (max-width: 720px) {
+    .side--left { border-right: none; border-bottom: 2px solid var(--gold); }
+  }
+  .side:hover { background: #1c1b17; }
+  .side:active { transform: scale(0.98); }
+  .side:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+
+  .side--flash { background: var(--gold) !important; }
+  .side--flash .name { color: var(--ink); }
+  .side--flash .crown, .side--flash .challenger-tag { color: var(--ink); }
+
+  .wall-texture {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
     background-image:
-      radial-gradient(circle at 15% 10%, rgba(232,197,71,0.03), transparent 40%),
-      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, transparent 1px, transparent 2px);
-  }
-  .wrap{max-width:680px;margin:0 auto;padding:20px 16px 100px;}
-
-  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;border-bottom:2px solid var(--line);padding-bottom:12px;}
-  h1{
-    font-family:'Archivo Black',sans-serif;
-    font-size:clamp(22px,6vw,32px);
-    margin:0;letter-spacing:-0.5px;color:var(--text);
-    line-height:0.95;
-  }
-  h1 span{color:var(--amber);}
-  .tag{font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;}
-
-  .panel{
-    background:var(--panel);
-    border:1px solid var(--line);
-    padding:16px;
-    margin-bottom:14px;
-    position:relative;
-  }
-  .panel::before{
-    content:attr(data-label);
-    position:absolute;top:-9px;left:12px;
-    background:var(--bg);padding:0 8px;
-    font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.03) 0%, transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(255,255,255,0.02) 0%, transparent 50%);
   }
 
-  /* --- BEATBOX CAPTURE --- */
-  .mic-row{display:flex;align-items:center;gap:14px;}
-  .mic-btn{
-    width:64px;height:64px;border-radius:50%;
-    border:2px solid var(--amber);
-    background:transparent;color:var(--amber);
-    font-family:'Space Mono',monospace;font-weight:700;font-size:10px;
-    display:flex;align-items:center;justify-content:center;text-align:center;
-    cursor:pointer;flex-shrink:0;position:relative;
-    transition:all .15s;
+  .name {
+    font-family: -apple-system, BlinkMacSystemFont, 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-stretch: condensed;
+    font-size: clamp(1.6rem, 6vw, 3.4rem);
+    text-align: center;
+    line-height: 1.05;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    z-index: 1;
+    max-width: 90%;
   }
-  .mic-btn.active{
-    background:var(--red);border-color:var(--red);color:#0d0f0c;
-    box-shadow:0 0 0 0 rgba(224,72,62,0.5);
-    animation:pulse 1.1s infinite;
+
+  .crown {
+    position: absolute; top: 1rem; left: 1.2rem;
+    font-size: 0.7rem; color: var(--gold); font-weight: 700; z-index: 1;
   }
-  @keyframes pulse{
-    0%{box-shadow:0 0 0 0 rgba(224,72,62,0.45);}
-    70%{box-shadow:0 0 0 16px rgba(224,72,62,0);}
-    100%{box-shadow:0 0 0 0 rgba(224,72,62,0);}
+  .challenger-tag {
+    position: absolute; top: 1rem; right: 1.2rem;
+    font-size: 0.7rem; color: var(--brick); font-weight: 700; z-index: 1;
   }
-  .mic-status{flex:1;}
-  .mic-status .big{font-size:13px;color:var(--text);}
-  .mic-status .small{font-size:10px;color:var(--text-dim);margin-top:3px;}
 
-  .level-meter{
-    height:6px;background:#000;border:1px solid var(--line);margin-top:12px;overflow:hidden;
+  .vs-wrap {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    pointer-events: none;
   }
-  .level-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));transition:width .05s linear;}
 
-  .hit-log{
-    display:flex;gap:4px;margin-top:10px;flex-wrap:wrap;min-height:22px;
+  .vs {
+    font-family: -apple-system, BlinkMacSystemFont, 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-stretch: condensed;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: var(--brick);
+    background: var(--ink);
+    border: 3px solid var(--brick);
+    border-radius: 50%;
+    width: 4.2rem; height: 4.2rem;
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(-6deg);
   }
-  .hit-chip{
-    font-size:10px;padding:3px 7px;border:1px solid var(--line);letter-spacing:1px;
+  .round-count {
+    font-size: 0.7rem;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--moss);
   }
-  .hit-chip.kick{color:var(--red);border-color:var(--red);}
-  .hit-chip.snare{color:var(--amber);border-color:var(--amber);}
-  .hit-chip.hat{color:var(--cyan);border-color:var(--cyan);}
 
-  /* --- TRANSPORT --- */
-  .transport{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-  .btn{
-    background:transparent;border:1px solid var(--line);color:var(--text);
-    font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;
-    padding:9px 14px;cursor:pointer;transition:all .12s;
+  .winner-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    position: relative;
+    background: #141412;
+    padding: 2rem;
+    text-align: center;
   }
-  .btn:hover{border-color:var(--amber);color:var(--amber);}
-  .btn.primary{border-color:var(--green);color:var(--green);}
-  .btn.primary:hover{background:var(--green);color:#0d0f0c;}
-  .btn.danger{border-color:var(--red);color:var(--red);}
-  .btn.danger:hover{background:var(--red);color:#0d0f0c;}
-  .btn:disabled{opacity:.3;cursor:default;pointer-events:none;}
-
-  .tempo-box{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-left:auto;}
-  .tempo-box b{color:var(--amber);font-size:14px;}
-
-  /* --- GRID --- */
-  .grid-panel{overflow-x:auto;}
-  .track{display:flex;align-items:center;gap:2px;margin-bottom:3px;}
-  .track-label{
-    width:56px;flex-shrink:0;font-size:10px;letter-spacing:1px;text-transform:uppercase;
-    padding-right:6px;text-align:right;
+  .winner-label { color: var(--gold); font-size: 0.85rem; font-weight: 700; z-index: 1; }
+  .winner-name {
+    font-family: -apple-system, BlinkMacSystemFont, 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-stretch: condensed;
+    font-size: clamp(2.2rem, 9vw, 5rem);
+    text-transform: uppercase;
+    color: var(--paper);
+    text-shadow: 4px 4px 0 var(--brick);
+    margin: 0;
+    z-index: 1;
+    line-height: 1.05;
   }
-  .track-label.kick{color:var(--red);}
-  .track-label.snare{color:var(--amber);}
-  .track-label.hat{color:var(--cyan);}
-
-  .steps{display:flex;gap:2px;}
-  .step{
-    width:22px;height:22px;border:1px solid var(--line);
-    background:#0a0b08;cursor:pointer;flex-shrink:0;position:relative;
+  .winner-stat { color: var(--moss); font-size: 1rem; font-weight: 500; z-index: 1; filter: brightness(1.6); }
+  .replay-btn {
+    margin-top: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    padding: 0.85rem 1.8rem;
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 120ms ease;
   }
-  .step.beat-marker{border-left:1px solid var(--amber-dim);}
-  .step.on.kick{background:var(--red);}
-  .step.on.snare{background:var(--amber);}
-  .step.on.hat{background:var(--cyan);}
-  .step.playhead{outline:2px solid #fff;outline-offset:-2px;}
+  .replay-btn:hover { transform: translateY(-2px); }
+  .replay-btn:active { transform: translateY(0); }
+  .replay-btn:focus-visible { outline: 3px solid var(--brick); outline-offset: 2px; }
 
-  .grid-footer{display:flex;justify-content:space-between;margin-top:10px;font-size:10px;color:var(--text-dim);}
+  .footer {
+    text-align: center;
+    padding: 0.7rem;
+    font-size: 0.7rem;
+    color: #555;
+    border-top: 1px solid #262626;
+  }
 
-  footer{text-align:center;margin-top:24px;font-size:10px;color:var(--text-dim);letter-spacing:1px;}
-
-  .hidden{display:none;}
-  .err{color:var(--red);font-size:11px;margin-top:8px;}
+  @media (prefers-reduced-motion: reduce) {
+    .side, .replay-btn { transition: none; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-
-  <header>
-    <div>
-      <h1>BEATBOX<br><span>// GRID</span></h1>
-      <div class="tag">CSP — old school onset detector</div>
-    </div>
-  </header>
-
-  <div class="panel" data-label="01 — capture">
-    <div class="mic-row">
-      <button class="mic-btn" id="micBtn">REC</button>
-      <div class="mic-status">
-        <div class="big" id="micStatusBig">Appuie et beatbox dans le micro</div>
-        <div class="small" id="micStatusSmall">Kick = "boom/pf" · Snare = "pah/ka" · Hi-hat = "tss/ts"</div>
-      </div>
-    </div>
-    <div class="level-meter"><div class="level-fill" id="levelFill"></div></div>
-    <div class="hit-log" id="hitLog"></div>
-    <div class="err hidden" id="errBox"></div>
-  </div>
-
-  <div class="panel" data-label="02 — transport">
-    <div class="transport">
-      <button class="btn primary" id="playBtn" disabled>▶ Play</button>
-      <button class="btn" id="clearBtn">Effacer</button>
-      <button class="btn danger" id="undoBtn" disabled>Annuler dernier hit</button>
-      <div class="tempo-box">TEMPO <b id="tempoVal">100</b> BPM</div>
-    </div>
-  </div>
-
-  <div class="panel grid-panel" data-label="03 — pattern (16 steps)">
-    <div id="tracksContainer"></div>
-    <div class="grid-footer">
-      <span>Tap un step pour l'éditer à la main</span>
-      <span id="stepCount">0 hits capturés</span>
-    </div>
-  </div>
-
-  <footer>ELDA STUDIO PROTOTYPE — TOUT CLIENT-SIDE, RIEN N'EST ENVOYÉ NULLE PART</footer>
+<div id="app">
+  <div style="padding:2rem;text-align:center;font-family:sans-serif;color:#F0EBE0;">Chargement...</div>
 </div>
 
 <script>
-const STEPS = 16;
-const TRACKS = ['kick','snare','hat'];
-const TRACK_LABELS = {kick:'KICK', snare:'SNARE', hat:'HI-HAT'};
+window.addEventListener("error", function (e) {
+  var app = document.getElementById("app");
+  if (app) {
+    app.innerHTML = '<div style="padding:2rem;text-align:center;font-family:sans-serif;color:#F0EBE0;">' +
+      '<p>Un problème est survenu au chargement.</p>' +
+      '<p style="color:#B33A1E;font-size:0.8rem;">' + (e.message || "erreur inconnue") + '</p>' +
+      '</div>';
+  }
+});
+</script>
 
-let pattern = { kick: Array(STEPS).fill(false), snare: Array(STEPS).fill(false), hat: Array(STEPS).fill(false) };
-let hitHistory = []; // for undo
-let bpm = 100;
-let recording = false;
-let audioCtx, analyser, micStream, rafId;
-let recordStartTime = 0;
-let lastHitTime = -1;
-let hitTimestamps = []; // {time, type} relative to recordStartTime
+<script>
+// ---------------------------------------------------------------------------
+// BASE DE DONNÉES — emcees / crews 90s (rien post-98), tirage aléatoire
+// ---------------------------------------------------------------------------
+const EMCEES = [
+  "Tupac Shakur", "The Notorious B.I.G.", "Nas", "Jay-Z", "Rakim",
+  "KRS-One", "Big Daddy Kane", "Chuck D", "Method Man", "Redman",
+  "Big L", "Big Pun", "Q-Tip", "Black Thought", "MC Lyte",
+  "Queen Latifah", "Lauryn Hill", "Common", "Mos Def", "Talib Kweli",
+  "Ghostface Killah", "RZA", "GZA", "Ol' Dirty Bastard", "Raekwon",
+  "Snoop Dogg", "Ice Cube", "Scarface", "DMX", "Busta Rhymes",
+  "André 3000", "Big Boi", "MC Ren", "Slick Rick",
+  "Kool G Rap", "Kurupt", "Twista", "Krayzie Bone", "LL Cool J",
+  "Ice-T", "Warren G", "E-40", "Too $hort", "Master P",
+  "Xzibit", "Canibus", "Prodigy (Mobb Deep)", "Havoc (Mobb Deep)", "Fat Joe",
+  "AZ", "Cormega", "Jadakiss", "Styles P", "Sheek Louch",
+  "Inspectah Deck", "Masta Killa", "U-God", "Cappadonna", "Kool Keith",
+  "Del the Funky Homosapien", "Ras Kass", "MC Eiht", "Spice 1",
+  "Bushwick Bill", "Willie D", "Da Brat", "Foxy Brown", "Lil' Kim",
+  "Eve", "Lady of Rage", "Yo-Yo", "Bahamadia",
+  "Pharoahe Monch", "Large Professor", "Guru", "Grand Puba", "Sadat X",
+  "Phife Dawg", "Doug E. Fresh", "Special Ed", "Diamond D",
+  "Lord Finesse", "AG", "O.C.",
+  "MF DOOM", "Ad-Rock", "Mike D", "MCA",
+  "Dr. Dre", "Skoob (Das EFX)", "Krazy Drayz (Das EFX)",
+  "Buckshot (Black Moon)", "5FT (Black Moon)", "Eminem",
+  "Tek (Smif-N-Wessun)", "Steele (Smif-N-Wessun)",
+  "Rockness (Heltah Skelter)", "Ruck (Heltah Skelter)",
+  "OGC (Louieville Sluggah)", "OGC (Starang Wondah)", "OGC (Top Dog)",
+].map(s => s.trim()).filter(Boolean);
 
-// ---------- UI: build grid ----------
-const tracksContainer = document.getElementById('tracksContainer');
-function buildGrid(){
-  tracksContainer.innerHTML = '';
-  TRACKS.forEach(track=>{
-    const row = document.createElement('div');
-    row.className = 'track';
-    const label = document.createElement('div');
-    label.className = 'track-label ' + track;
-    label.textContent = TRACK_LABELS[track];
-    row.appendChild(label);
+const POOL = [...new Set(EMCEES)];
 
-    const stepsWrap = document.createElement('div');
-    stepsWrap.className = 'steps';
-    for(let i=0;i<STEPS;i++){
-      const s = document.createElement('div');
-      s.className = 'step' + (i%4===0?' beat-marker':'');
-      s.dataset.track = track;
-      s.dataset.index = i;
-      if(pattern[track][i]) s.classList.add('on', track);
-      s.addEventListener('click', ()=>{
-        pattern[track][i] = !pattern[track][i];
-        renderGrid();
-        updateCount();
-      });
-      stepsWrap.appendChild(s);
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+// État du jeu
+// ---------------------------------------------------------------------------
+let state = {};
+
+function startGame() {
+  const shuffled = shuffle(POOL);
+  state = {
+    queue: shuffled.slice(2),
+    champion: shuffled[0],
+    challenger: shuffled[1],
+    round: 1,
+    wins: 0,
+    flash: null,
+    finished: false,
+  };
+  render();
+}
+
+function pick(side) {
+  if (state.flash) return;
+  const winnerName = side === "left" ? state.champion : state.challenger;
+  state.flash = side;
+  render();
+
+  setTimeout(() => {
+    state.wins += 1;
+    if (state.queue.length === 0) {
+      state.champion = winnerName;
+      state.finished = true;
+      state.flash = null;
+      render();
+      return;
     }
-    row.appendChild(stepsWrap);
-    tracksContainer.appendChild(row);
-  });
-}
-function renderGrid(){
-  document.querySelectorAll('.step').forEach(el=>{
-    const t = el.dataset.track, i = +el.dataset.index;
-    el.classList.toggle('on', pattern[t][i]);
-    el.classList.toggle(t, pattern[t][i]);
-  });
-}
-function updateCount(){
-  const total = TRACKS.reduce((sum,t)=>sum+pattern[t].filter(Boolean).length,0);
-  document.getElementById('stepCount').textContent = total + ' hits capturés';
-  document.getElementById('playBtn').disabled = total===0;
-  document.getElementById('undoBtn').disabled = hitHistory.length===0;
-}
-buildGrid();
-
-// ---------- Mic capture + onset detection ----------
-const micBtn = document.getElementById('micBtn');
-const statusBig = document.getElementById('micStatusBig');
-const statusSmall = document.getElementById('micStatusSmall');
-const levelFill = document.getElementById('levelFill');
-const hitLogEl = document.getElementById('hitLog');
-const errBox = document.getElementById('errBox');
-
-let energyHistory = [];
-const ENERGY_WINDOW = 20;
-let refractoryUntil = 0;
-
-micBtn.addEventListener('click', async ()=>{
-  if(recording){ stopRecording(); return; }
-  try{
-    micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
-  }catch(e){
-    errBox.textContent = "Micro inaccessible — vérifie les autorisations.";
-    errBox.classList.remove('hidden');
-    return;
-  }
-  errBox.classList.add('hidden');
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  const source = audioCtx.createMediaStreamSource(micStream);
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0;
-  source.connect(analyser);
-
-  recording = true;
-  recordStartTime = audioCtx.currentTime;
-  hitTimestamps = [];
-  energyHistory = [];
-  micBtn.classList.add('active');
-  micBtn.textContent = 'STOP';
-  statusBig.textContent = 'Écoute... beatbox !';
-  statusSmall.textContent = '4 mesures max (~' + Math.round(16*60/bpm) + 's à ' + bpm + ' BPM)';
-  hitLogEl.innerHTML = '';
-
-  analyzeLoop();
-
-  // auto-stop after 16 steps worth of time (4 bars at current bpm, 16th notes)
-  const stepDur = 60/bpm/4;
-  setTimeout(()=>{ if(recording) stopRecording(); }, stepDur*STEPS*1000 + 300);
-});
-
-function stopRecording(){
-  recording = false;
-  cancelAnimationFrame(rafId);
-  if(micStream) micStream.getTracks().forEach(t=>t.stop());
-  if(audioCtx) audioCtx.close();
-  micBtn.classList.remove('active');
-  micBtn.textContent = 'REC';
-  statusBig.textContent = hitTimestamps.length ? 'Capturé ! Pattern posé sur la grille.' : 'Rien capté — réessaie plus fort';
-  statusSmall.textContent = 'Kick = "boom/pf" · Snare = "pah/ka" · Hi-hat = "tss/ts"';
-  levelFill.style.width = '0%';
-  quantizeHitsToGrid();
+    const [next, ...rest] = state.queue;
+    state.champion = winnerName;
+    state.challenger = next;
+    state.queue = rest;
+    state.round += 1;
+    state.flash = null;
+    render();
+  }, 260);
 }
 
-function analyzeLoop(){
-  if(!recording) return;
-  const bufferLength = analyser.frequencyBinCount;
-  const timeData = new Uint8Array(analyser.fftSize);
-  const freqData = new Uint8Array(bufferLength);
-  analyser.getByteTimeDomainData(timeData);
-  analyser.getByteFrequencyData(freqData);
+// ---------------------------------------------------------------------------
+// Rendu
+// ---------------------------------------------------------------------------
+const WALL_SVG = '<div class="wall-texture"></div>';
 
-  // RMS energy from time domain
-  let sumSquares = 0;
-  for(let i=0;i<timeData.length;i++){
-    const v = (timeData[i]-128)/128;
-    sumSquares += v*v;
-  }
-  const rms = Math.sqrt(sumSquares/timeData.length);
-  levelFill.style.width = Math.min(100, rms*400) + '%';
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
 
-  energyHistory.push(rms);
-  if(energyHistory.length>ENERGY_WINDOW) energyHistory.shift();
-  const avgEnergy = energyHistory.reduce((a,b)=>a+b,0)/energyHistory.length;
+function render() {
+  const app = document.getElementById("app");
 
-  const now = audioCtx.currentTime;
-  const THRESHOLD = 0.12;
-  const RATIO = 1.7;
-  const REFRACTORY_MS = 90;
+  let body;
+  if (!state.finished) {
+    body = `
+      <div class="duel">
+        <button class="side side--left ${state.flash === "left" ? "side--flash" : ""}" id="pick-left" aria-label="Choisir ${escapeHtml(state.champion)}">
+          ${WALL_SVG}
+          ${state.round > 1 ? '<span class="crown">champion</span>' : ""}
+          <span class="name">${escapeHtml(state.champion)}</span>
+        </button>
 
-  if(rms > THRESHOLD && rms > avgEnergy*RATIO && now*1000 > refractoryUntil){
-    refractoryUntil = now*1000 + REFRACTORY_MS;
-    const type = classifyHit(freqData, rms);
-    const t = now - recordStartTime;
-    hitTimestamps.push({time:t, type});
-    logHit(type);
+        <div class="vs-wrap">
+          <span class="vs">VS</span>
+          <span class="round-count">round ${state.round}</span>
+        </div>
+
+        <button class="side side--right ${state.flash === "right" ? "side--flash" : ""}" id="pick-right" aria-label="Choisir ${escapeHtml(state.challenger)}">
+          ${WALL_SVG}
+          <span class="challenger-tag">challenger</span>
+          <span class="name">${escapeHtml(state.challenger)}</span>
+        </button>
+      </div>
+    `;
+  } else {
+    body = `
+      <div class="winner-screen">
+        ${WALL_SVG}
+        <span class="winner-label">le dernier debout</span>
+        <h1 class="winner-name">${escapeHtml(state.champion)}</h1>
+        <p class="winner-stat">${state.wins} victoire${state.wins > 1 ? "s" : ""} d'affilée</p>
+        <button class="replay-btn" id="replay">Relancer une battle</button>
+      </div>
+    `;
   }
 
-  rafId = requestAnimationFrame(analyzeLoop);
-}
+  app.innerHTML = `
+    <header class="header">
+      <span class="header-tag">emcee battle</span>
+      <span class="header-era">90's edition</span>
+    </header>
+    ${body}
+    <footer class="footer">
+      <span>${POOL.length} emcees dans la base</span>
+    </footer>
+  `;
 
-function classifyHit(freqData, rms){
-  // freqData: 0-255 magnitude per bin, low index = low freq
-  const n = freqData.length;
-  const lowEnd = Math.floor(n*0.08);   // ~ sub/bass region
-  const midEnd = Math.floor(n*0.35);   // mid region
-
-  let low=0, mid=0, high=0;
-  for(let i=0;i<n;i++){
-    if(i<lowEnd) low+=freqData[i];
-    else if(i<midEnd) mid+=freqData[i];
-    else high+=freqData[i];
-  }
-  const lowAvg = low/lowEnd;
-  const midAvg = mid/(midEnd-lowEnd);
-  const highAvg = high/(n-midEnd);
-
-  // Kick: dominant low energy
-  if(lowAvg > midAvg*1.15 && lowAvg > highAvg*1.3) return 'kick';
-  // Hi-hat: dominant high energy, sharp/noisy
-  if(highAvg > lowAvg*1.1 && highAvg > midAvg*0.9) return 'hat';
-  // Snare: everything else (broadband with mid presence)
-  return 'snare';
-}
-
-function logHit(type){
-  const chip = document.createElement('span');
-  chip.className = 'hit-chip ' + type;
-  chip.textContent = type.toUpperCase();
-  hitLogEl.appendChild(chip);
-  hitLogEl.scrollLeft = hitLogEl.scrollWidth;
-}
-
-function quantizeHitsToGrid(){
-  if(hitTimestamps.length===0) return;
-  const stepDur = 60/bpm/4; // 16th note duration
-  const newHits = [];
-  hitTimestamps.forEach(h=>{
-    let stepIndex = Math.round(h.time/stepDur);
-    stepIndex = Math.max(0, Math.min(STEPS-1, stepIndex));
-    if(!pattern[h.type][stepIndex]){
-      pattern[h.type][stepIndex] = true;
-      newHits.push({track:h.type, index:stepIndex});
-    }
-  });
-  if(newHits.length){
-    hitHistory.push(newHits);
-  }
-  renderGrid();
-  updateCount();
-}
-
-// ---------- Undo / Clear ----------
-document.getElementById('undoBtn').addEventListener('click', ()=>{
-  const last = hitHistory.pop();
-  if(!last) return;
-  last.forEach(h=> pattern[h.track][h.index] = false);
-  renderGrid();
-  updateCount();
-});
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  TRACKS.forEach(t=> pattern[t] = Array(STEPS).fill(false));
-  hitHistory = [];
-  renderGrid();
-  updateCount();
-});
-
-// ---------- Playback ----------
-let playing = false;
-let playCtx, playStep = 0, nextNoteTime = 0, playTimer;
-const playBtn = document.getElementById('playBtn');
-
-function makeSound(ctx, type, time){
-  if(type==='kick'){
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.setValueAtTime(150, time);
-    o.frequency.exponentialRampToValueAtTime(45, time+0.12);
-    g.gain.setValueAtTime(1, time);
-    g.gain.exponentialRampToValueAtTime(0.01, time+0.25);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(time); o.stop(time+0.25);
-  } else if(type==='snare'){
-    const bufferSize = ctx.sampleRate*0.2;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++) data[i] = Math.random()*2-1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type='highpass'; filter.frequency.value=1000;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.7, time);
-    g.gain.exponentialRampToValueAtTime(0.01, time+0.18);
-    noise.connect(filter); filter.connect(g); g.connect(ctx.destination);
-    noise.start(time); noise.stop(time+0.18);
-  } else if(type==='hat'){
-    const bufferSize = ctx.sampleRate*0.05;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++) data[i] = Math.random()*2-1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type='highpass'; filter.frequency.value=7000;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.4, time);
-    g.gain.exponentialRampToValueAtTime(0.01, time+0.05);
-    noise.connect(filter); filter.connect(g); g.connect(ctx.destination);
-    noise.start(time); noise.stop(time+0.05);
+  if (!state.finished) {
+    document.getElementById("pick-left").addEventListener("click", () => pick("left"));
+    document.getElementById("pick-right").addEventListener("click", () => pick("right"));
+  } else {
+    document.getElementById("replay").addEventListener("click", startGame);
   }
 }
 
-function scheduler(){
-  const stepDur = 60/bpm/4;
-  while(nextNoteTime < playCtx.currentTime + 0.1){
-    TRACKS.forEach(t=>{
-      if(pattern[t][playStep]) makeSound(playCtx, t, nextNoteTime);
-    });
-    highlightStep(playStep);
-    nextNoteTime += stepDur;
-    playStep = (playStep+1) % STEPS;
-  }
-  playTimer = setTimeout(scheduler, 25);
-}
-
-function highlightStep(i){
-  document.querySelectorAll('.step').forEach(el=>{
-    el.classList.toggle('playhead', +el.dataset.index === i);
-  });
-}
-
-playBtn.addEventListener('click', ()=>{
-  if(playing){
-    playing = false;
-    clearTimeout(playTimer);
-    playBtn.textContent = '▶ Play';
-    document.querySelectorAll('.step').forEach(el=>el.classList.remove('playhead'));
-    return;
-  }
-  playing = true;
-  playCtx = new (window.AudioContext||window.webkitAudioContext)();
-  playStep = 0;
-  nextNoteTime = playCtx.currentTime + 0.05;
-  playBtn.textContent = '■ Stop';
-  scheduler();
-});
-
-updateCount();
+startGame();
 </script>
 </body>
 </html>
