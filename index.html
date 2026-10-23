@@ -41,6 +41,7 @@ button:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 </div>
 <div id="end"><div><h1 id="eT"></h1><p id="eP"></p><button id="again">Rejouer</button></div></div>
 <script>
+window.addEventListener("error",e=>{const d=document.createElement("pre");d.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99;background:#400;color:#fff;font:12px monospace;padding:8px;white-space:pre-wrap";d.textContent="Erreur : "+e.message+" (ligne "+e.lineno+")";document.body.appendChild(d)});
 let C=14,R=12;const GOAL=25;
 const B={
  solar:{n:"Panneau solaire",c:20,e:4,d:"+4 énergie"},
