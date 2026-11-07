@@ -76,15 +76,18 @@ nb=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=nb.getChannelData(0);f
 function graph(){const mk=()=>ac.createGain(),cv=new Float32Array(1024);for(let i=0;i<1024;i++)cv[i]=Math.tanh((i/512-1)*3);
 const ws=()=>{const w=ac.createWaveShaper();w.curve=cv;w.oversample='2x';return w};
 const mst=mk(),j=mk(),cp=ac.createDynamicsCompressor(),lp=ac.createBiquadFilter(),md=mk(),mdg=mk(),mw=ws(),mwg=mk();lp.type='lowpass';
-mst.connect(md);md.connect(j);mst.connect(mdg);mdg.connect(mw);mw.connect(mwg);mwg.connect(j);j.connect(lp);const cp2=ac.createDynamicsCompressor();cp.threshold.value=-10;cp.knee.value=12;cp.ratio.value=2.5;cp.attack.value=.008;cp.release.value=.22;cp2.threshold.value=-2;cp2.knee.value=0;cp2.ratio.value=20;cp2.attack.value=.001;cp2.release.value=.12;lp.connect(cp);cp.connect(cp2);cp2.connect(ac.destination);
+// Master simplifié : un seul compresseur modéré. L'ancien double étage (-10 dB puis -2 dB/20:1)
+// écrasait fortement les transitoires et pouvait rendre les samples agressifs.
+mst.connect(md);md.connect(j);mst.connect(mdg);mdg.connect(mw);mw.connect(mwg);mwg.connect(j);j.connect(lp);
+cp.threshold.value=-8;cp.knee.value=10;cp.ratio.value=3;cp.attack.value=.012;cp.release.value=.18;lp.connect(cp);cp.connect(ac.destination);
 const rv=ac.createConvolver(),Ln=Math.floor(ac.sampleRate*2.2),ib=ac.createBuffer(2,Ln,ac.sampleRate);
 for(let c=0;c<2;c++){const d=ib.getChannelData(c);for(let i=0;i<Ln;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/Ln,3)}
 rv.buffer=ib;const wet=mk();rv.connect(wet);wet.connect(mst);snd=[];dst=[];dsn=[];pans=[];
 const dly=ac.createDelay(2),fb=mk(),dwet=mk(),dlp=ac.createBiquadFilter(),qc=new Float32Array(4096);dlp.type='lowpass';dlp.frequency.value=3200;for(let i=0;i<4096;i++)qc[i]=Math.round((i/2048-1)*64)/64;
 dly.connect(dlp);dlp.connect(dwet);dlp.connect(fb);fb.connect(dly);dwet.connect(mst);
 bus=T.map(()=>{const b=mk(),s=mk(),m=mk(),dry=mk(),dg=mk(),w=ws(),wg=mk(),cl=ac.createBiquadFilter(),cq=ac.createWaveShaper(),cw=mk(),ds=mk(),pn=ac.createStereoPanner();cl.type='lowpass';cl.frequency.value=5500;cq.curve=qc;b.connect(dry);dry.connect(m);b.connect(dg);dg.connect(w);w.connect(wg);wg.connect(m);b.connect(cl);cl.connect(cq);cq.connect(cw);cw.connect(m);m.connect(pn);pn.connect(mst);m.connect(s);s.connect(rv);m.connect(ds);ds.connect(dly);snd.push(s);dsn.push(ds);pans.push(pn);dst.push([dry,dg,wg,cw]);return b});
-G={mst,md,mdg,mwg,lp,wet,dly,fb,dwet};applyM()}
-function applyM(){if(!G.mst)return;const p=M.p,d=p[3];G.mst.gain.value=p[0]*.82;G.lp.frequency.value=200*Math.pow(100,p[1]);G.wet.gain.value=p[2]*1.4;G.md.gain.value=1-d*.6;G.mdg.gain.value=1+d*10;G.mwg.gain.value=d*.5;G.dly.delayTime.value=60/bpm*.75;G.dwet.gain.value=p[4]*1.2;G.fb.gain.value=p[5]*.85}
+G={mst,md,mdg,mwg,lp,wet,dly,fb,dwet,cp};applyM()}
+function applyM(){if(!G.mst)return;const p=M.p,d=p[3];G.mst.gain.value=p[0]*.72;G.lp.frequency.value=200*Math.pow(100,p[1]);G.wet.gain.value=p[2]*1.4;G.md.gain.value=1-d*.6;G.mdg.gain.value=1+d*10;G.mwg.gain.value=d*.5;G.dly.delayTime.value=60/bpm*.75;G.dwet.gain.value=p[4]*1.2;G.fb.gain.value=p[5]*.85}
 function noise(t,dur){const s=ac.createBufferSource();s.buffer=nb;s.loop=true;s.start(t);s.stop(t+dur);return s}
 function env(g,t,pk,dec){g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(pk,t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+dec)}
 const K=p=>2**((p[4]-.5)*2);
@@ -361,7 +364,7 @@ $('pzw').addEventListener('pointerdown',e=>{if(!P.buf)return;const p=wpos(e);wdr
 $('pzw').addEventListener('pointermove',e=>{if(wdrag)wmove(e)});
 function wend(){if(!wdrag)return;wdrag=null;calcPeaks();stSave();draw();ctl()}
 $('pzw').addEventListener('pointerup',wend);$('pzw').addEventListener('pointercancel',wend);
-$('pze').onclick=()=>{if(!P.buf)return;init();const len=P.buf.duration,s=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime+.03,d=(P.b-P.a)*len,v=P.vol*.94*(P.normOn===false?1:P.ng||1),fo=Math.min(P.fade/1000,d*.2);s.buffer=P.buf;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.003);g.gain.setValueAtTime(v,t+d-fo);g.gain.linearRampToValueAtTime(0,t+d);s.connect(g);g.connect(G.mst);s.start(t,P.a*len);s.stop(t+d+.01)};
+$('pze').onclick=()=>{if(!P.buf)return;init();const len=P.buf.duration,s=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime+.03,d=(P.b-P.a)*len,v=Math.min(.82,P.vol*.85*(P.normOn===false?1:(P.ng||1)));s.buffer=P.buf;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.003);g.gain.setValueAtTime(v,t+d-.01);g.gain.linearRampToValueAtTime(0,t+d);s.connect(g);g.connect(G.mst);s.start(t,P.a*len);s.stop(t+d+.01)};
 $('pzi').onclick=()=>$('pzfile').click();
 $('pzfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;init();$('pzn').textContent='Lecture du fichier...';
 try{const raw=await f.arrayBuffer();P.raw=raw;P.name=f.name;P.buf=null;P.rev=null;await decode();if(!P.buf)return;P.slots=ident();P.sel=-1;P.a=0;P.b=1;calcPeaks();await put('raw',raw);stSave();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}draw();ctl()}catch(_){$('pzn').textContent='Fichier audio illisible'}};
