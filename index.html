@@ -95,7 +95,7 @@ function trig(i,t,v,o){if(!aud(i))return;const x=T[i],p=x.p.slice(),m=out;p[11]=
 if(x.buf)smp(t,x,p);else V[i](t,p);out=m}
 function smp(t,x,p){const s=ac.createBufferSource(),g=ac.createGain(),r=2**((p[4]-.5)*2),sa=x.a||0,sb=x.b==null?1:x.b,off=sa*x.buf.duration,lp=ac.createBiquadFilter(),len=Math.max(.05,(sb-sa)*x.buf.duration/r*(.05+.95*p[1])),f=Math.min(.012,len*.22),atk=Math.min(.004,len*.18);
 s.buffer=x.buf;s.playbackRate.value=r;const gv=p[3]*.92*(x.ng||1);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gv,t+atk);g.gain.setValueAtTime(gv,t+len-f);g.gain.linearRampToValueAtTime(0,t+len);
-if(x.smp&&p[0]<.97){lp.type='lowpass';lp.Q.value=.7;lp.frequency.value=200*Math.pow(80,p[0]);s.connect(lp);lp.connect(g)}else s.connect(g);g.connect(out);s.start(t,off);s.stop(t+len+.01)}
+if(x.smp&&p[0]<.97){lp.type='lowpass';lp.Q.value=.7;lp.frequency.value=200*Math.pow(80,p[0]);s.connect(lp);lp.connect(g)}else s.connect(g);g.connect(ac.destination);s.start(t,off);s.stop(t+len+.01)}
 const V=[
 (t,p)=>{const o=ac.createOscillator(),g=ac.createGain(),dec=.12+p[1]*.6,b=(38+p[0]*50)*K(p);
 o.frequency.setValueAtTime(b+60+p[2]*300,t);o.frequency.exponentialRampToValueAtTime(b,t+.04+p[2]*.04);
@@ -327,7 +327,7 @@ function play(sl,t,d){if(!sl||sl.m||!P.buf)return;const b=sl.r?(P.rev||(P.rev=mk
 off=sl.r?len-(P.a*len+(sl.s+1)*sln):P.a*len+sl.s*sln,dur=Math.min(sln/rate,d),s=ac.createBufferSource(),g=ac.createGain(),f=ac.createBiquadFilter(),v=P.vol*.94*(P.normOn===false?1:P.ng||1),fo=Math.min(P.fade/1000,dur*.24),atk=Math.min(.003,dur*.12);
 s.buffer=b;s.playbackRate.value=rate;f.type='lowpass';f.Q.value=.7;f.frequency.value=200*Math.pow(100,P.filt);
 g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+atk);g.gain.setValueAtTime(v,t+dur-fo);g.gain.linearRampToValueAtTime(0,t+dur);
-s.connect(f);f.connect(g);g.connect(G.mst);s.start(t,off);s.stop(t+dur+.01)}
+s.connect(f);f.connect(g);g.connect(ac.destination);s.start(t,off);s.stop(t+dur+.01)}
 function sch(){if(!ac||!P.on)return;while(P.tn<ac.currentTime+.25){const k=P.slot%P.n,d=P.bars*N*sd()/P.n;play(P.slots[k],P.tn,d);P.pq.push({t:P.tn,s:k,d:d});P.tn+=d;P.slot=(k+1)%P.n}}
 function startPos(){const d=P.bars*N*sd()/P.n;if(playing){const bs=next-step*sd(),k=Math.max(0,Math.ceil((ac.currentTime+.05-bs)/d-1e-6));return{t:bs+k*d,s:k%P.n}}return{t:ac.currentTime+.08,s:0}}
 function pzStart(){init();if(!P.buf)return;const sp=startPos();P.on=true;P.auto=false;P.tn=sp.t;P.slot=sp.s;P.pq=[];P.cur=null;clearInterval(P.tmr);P.tmr=setInterval(sch,25);ctl()}
@@ -364,7 +364,7 @@ $('pzw').addEventListener('pointerdown',e=>{if(!P.buf)return;const p=wpos(e);wdr
 $('pzw').addEventListener('pointermove',e=>{if(wdrag)wmove(e)});
 function wend(){if(!wdrag)return;wdrag=null;calcPeaks();stSave();draw();ctl()}
 $('pzw').addEventListener('pointerup',wend);$('pzw').addEventListener('pointercancel',wend);
-$('pze').onclick=()=>{if(!P.buf)return;init();const len=P.buf.duration,s=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime+.03,d=(P.b-P.a)*len,v=Math.min(.82,P.vol*.85*(P.normOn===false?1:(P.ng||1)));s.buffer=P.buf;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.003);g.gain.setValueAtTime(v,t+d-.01);g.gain.linearRampToValueAtTime(0,t+d);s.connect(g);g.connect(G.mst);s.start(t,P.a*len);s.stop(t+d+.01)};
+$('pze').onclick=()=>{if(!P.buf)return;init();const len=P.buf.duration,s=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime+.03,d=(P.b-P.a)*len,v=Math.min(.82,P.vol*.85*(P.normOn===false?1:(P.ng||1)));s.buffer=P.buf;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.003);g.gain.setValueAtTime(v,t+d-.01);g.gain.linearRampToValueAtTime(0,t+d);s.connect(g);g.connect(ac.destination);s.start(t,P.a*len);s.stop(t+d+.01)};
 $('pzi').onclick=()=>$('pzfile').click();
 $('pzfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;init();$('pzn').textContent='Lecture du fichier...';
 try{const raw=await f.arrayBuffer();P.raw=raw;P.name=f.name;P.buf=null;P.rev=null;await decode();if(!P.buf)return;P.slots=ident();P.sel=-1;P.a=0;P.b=1;calcPeaks();await put('raw',raw);stSave();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}draw();ctl()}catch(_){$('pzn').textContent='Fichier audio illisible'}};
