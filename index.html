@@ -1,21 +1,235 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Diagnostic PCM — Celluloïd Circles</title>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171714">
+<title>Celluloid Circles — Pizza Lab</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111318;color:#eee;font:16px/1.45 system-ui,sans-serif;padding:20px;max-width:760px;margin:auto}h1{font-size:1.45rem;margin:0 0 8px}p{color:#b9bdc8}.box{background:#1c2029;border:1px solid #343a48;border-radius:12px;padding:16px;margin:14px 0}button,label.file{display:inline-block;border:0;border-radius:9px;padding:12px 15px;margin:5px 5px 5px 0;background:#e4b85c;color:#171717;font-weight:700;cursor:pointer}button.secondary{background:#3b4352;color:#fff}input{max-width:100%}.row{display:flex;flex-wrap:wrap;gap:6px}audio{width:100%;margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0c0e12;padding:12px;border-radius:8px;color:#cbd3e3;font-size:13px}.muted{font-size:13px;color:#9ca3b2}.status{font-weight:700;color:#e4b85c}
-</style></head><body>
-<h1>Diagnostic PCM — comparaison</h1>
-<p>Ce test compare le buffer décodé, une copie PCM indépendante et un WAV PCM16 généré avec un encodeur vérifié. Aucun effet audio n'est appliqué.</p>
-<div class="box"><label class="file">Choisir le sample <input id="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" hidden></label><div id="name" class="muted">Aucun fichier chargé.</div><div id="stats"></div></div>
-<div class="box"><h2>Lectures A/B</h2><div class="row"><button id="a" disabled>1. Buffer décodé</button><button id="b" class="secondary" disabled>2. Copie PCM</button><button id="wav" class="secondary" disabled>3. WAV PCM16 natif</button></div><audio id="native" controls></audio><p class="muted">Le lecteur ci-dessus lit le fichier original. Le bouton 3 télécharge aussi le WAV pour le lire dans le lecteur natif.</p><a id="download" hidden download="buffer_pcm16.wav">Télécharger le WAV généré</a></div>
-<div class="box"><h2>Contrôle des données</h2><pre id="report">En attente d'un fichier…</pre></div>
+:root{--bg:#171714;--panel:#22221e;--panel2:#2b2b25;--ink:#f1eedf;--muted:#aaa795;--red:#ef5b42;--yellow:#e8c75a;--line:#45443a;--green:#a8c77b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;padding:18px 14px 36px}
+main{max-width:760px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.logo{font-weight:900;letter-spacing:.08em;font-size:13px}.logo span{color:var(--red)}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:5px 8px;border-radius:20px}
+h1{font-size:clamp(27px,7vw,42px);line-height:1;margin:8px 0 7px;letter-spacing:-.05em}
+.sub{color:var(--muted);margin:0 0 20px;font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0}
+.upload{display:flex;align-items:center;justify-content:center;gap:10px;border:1px dashed #77715e;border-radius:12px;padding:17px;text-align:center;background:#1d1d19;cursor:pointer}
+.upload strong{display:block}.upload small{color:var(--muted)}
+input[type=file]{display:none}
+.fileline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+button,select,input{font:inherit}
+button{border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:10px 13px;border-radius:10px;cursor:pointer}
+button:active{transform:scale(.98)}
+button.primary{background:var(--red);border-color:var(--red);color:#1a1713;font-weight:800}
+button.active{background:var(--yellow);border-color:var(--yellow);color:#191812}
+button:disabled{opacity:.35;cursor:not-allowed}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+label{font-size:12px;color:var(--muted)}
+select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.pizza-wrap{display:grid;grid-template-columns:minmax(220px,1fr) minmax(150px,.7fr);gap:16px;align-items:center}
+@media(max-width:560px){.pizza-wrap{grid-template-columns:1fr}.pizza-side{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pizza-side .hint{grid-column:1/-1}}
+#pizza{width:100%;max-width:390px;aspect-ratio:1;display:block;margin:auto;touch-action:manipulation}
+.slice{cursor:pointer;stroke:#1b1a16;stroke-width:2.5}
+.slice.selected{stroke:var(--yellow);stroke-width:6}
+.slice.playing{stroke:var(--green);stroke-width:6}
+.slice-label{fill:#211e17;font-size:12px;font-weight:900;pointer-events:none;text-anchor:middle;dominant-baseline:middle}
+.stat{font-size:12px;color:var(--muted);margin-top:4px}
+.pizza-side .box{background:#1b1b17;border:1px solid var(--line);padding:10px;border-radius:10px;margin-bottom:8px}
+.big{font-size:23px;font-weight:900}
+input[type=range]{width:100%;accent-color:var(--red)}
+.range-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:10px 0}
+.range-row output{font-variant-numeric:tabular-nums;color:var(--yellow);font-size:12px}
+.steps{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:12px 0}
+.step{padding:12px 0;text-align:center;font-weight:800}
+.step.on{background:var(--red);border-color:var(--red);color:#191511}
+.step.current{outline:2px solid var(--yellow);outline-offset:2px}
+.note{color:var(--muted);font-size:12px;line-height:1.5}
+.status{font-size:12px;color:var(--green);min-height:18px;margin-top:8px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">CELLULOID <span>●</span> CIRCLES</div><div class="tag">PIZZA LAB / SOLO MODULE</div></header>
+<h1>Slice it.<br>Flip the loop.</h1>
+<p class="sub">Un sample, découpé en parts. Chaque part devient un petit instrument.</p>
+
+<section class="panel">
+<label class="upload" for="file"><div><strong>＋ Importer un sample</strong><small>MP3, WAV, OGG — privilégie un fichier audio local</small></div></label>
+<input id="file" type="file" accept="audio/*">
+<div class="fileline"><span id="filename">Aucun sample chargé</span><span id="duration">—</span></div>
+<div class="controls" style="margin-top:12px">
+<button id="preview" disabled>▶ Écouter l'original</button>
+<button id="stopPreview" disabled>■ Stop</button>
+</div>
+<audio id="previewAudio" preload="metadata" style="display:none"></audio>
+<div class="status" id="status">En attente d'un sample.</div>
+</section>
+
+<section class="panel">
+<div class="row"><strong>01 / Découpe</strong><div class="controls"><label for="count">Parts</label><select id="count"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></div></div>
+<div class="pizza-wrap">
+<svg id="pizza" viewBox="0 0 400 400" role="group" aria-label="Découpe circulaire du sample"></svg>
+<div class="pizza-side">
+<div class="box"><label>PART SÉLECTIONNÉE</label><div class="big" id="selectedName">—</div><div class="stat" id="selectedTime">Charge un sample</div></div>
+<button class="primary" id="playSlice" disabled>▶ Jouer cette part</button>
+<button id="stopAll" disabled>■ Stop tous</button>
+<div class="hint note">Tape une part pour la sélectionner. Le bouton la joue. Plusieurs parts peuvent se superposer.</div>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="row"><strong>02 / Manipulation</strong><span class="tag">LIVE</span></div>
+<div class="range-row"><label for="volume">Volume</label><output id="volOut">85%</output><input id="volume" type="range" min="0" max="100" value="85" style="grid-column:1/-1"></div>
+<div class="range-row"><label for="pitch">Vitesse / pitch</label><output id="pitchOut">1.00×</output><input id="pitch" type="range" min="50" max="150" value="100" style="grid-column:1/-1"></div>
+<div class="range-row"><label for="fade">Fade de sortie</label><output id="fadeOut">10 ms</output><input id="fade" type="range" min="0" max="250" value="10" style="grid-column:1/-1"></div>
+<div class="controls">
+<button id="reverse" disabled>↶ Ordre inverse</button>
+<button id="shuffle" disabled>⤨ Mélanger</button>
+<button id="reset" disabled>Réinitialiser</button>
+</div>
+<p class="note">L'ordre des parts est modifié visuellement et dans le séquenceur. La lecture reste basée sur le fichier original : pas de conversion du sample en WAV.</p>
+</section>
+
+<section class="panel">
+<div class="row"><strong>03 / Séquenceur simple</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
+<div class="steps" id="steps"></div>
+<div class="controls">
+<button class="primary" id="seqPlay" disabled>▶ Lancer la séquence</button>
+<button id="seqStop" disabled>■ Stop séquence</button>
+<button id="clearSteps" disabled>Effacer</button>
+</div>
+<p class="note">Active les cases pour programmer les parts. Une case = une noire. Le séquenceur boucle sur 8 pas.</p>
+</section>
+<footer>Pizza Lab — prototype autonome. Les découpes sont lues depuis le média original.</footer>
+</main>
 <script>
-const $=id=>document.getElementById(id);let ctx=null,buf=null,copy=null,urls=[];
-function url(blob){const u=URL.createObjectURL(blob);urls.push(u);return u}
-function makeWav(buffer){const ch=buffer.numberOfChannels,n=buffer.length,rate=buffer.sampleRate,bps=2,align=ch*bps,dataSize=n*align;const ab=new ArrayBuffer(44+dataSize),v=new DataView(ab);const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};str(0,'RIFF');v.setUint32(4,36+dataSize,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);v.setUint32(24,rate,true);v.setUint32(28,rate*align,true);v.setUint16(32,align,true);v.setUint16(34,16,true);str(36,'data');v.setUint32(40,dataSize,true);
- const arrays=Array.from({length:ch},(_,c)=>buffer.getChannelData(c));let p=44;for(let i=0;i<n;i++){for(let c=0;c<ch;c++){let x=arrays[c][i];if(!Number.isFinite(x))x=0;x=Math.max(-1,Math.min(1,x));v.setInt16(p,x<0?Math.round(x*32768):Math.round(x*32767),true);p+=2;}}return new Blob([ab],{type:'audio/wav'});}
-function stats(buffer){let out=[];for(let c=0;c<buffer.numberOfChannels;c++){const a=buffer.getChannelData(c);let min=Infinity,max=-Infinity,sum=0,sq=0,clip=0,nan=0;for(let i=0;i<a.length;i++){const x=a[i];if(!Number.isFinite(x)){nan++;continue}if(x<min)min=x;if(x>max)max=x;sum+=x;sq+=x*x;if(Math.abs(x)>=0.9999)clip++;}out.push(`Canal ${c+1}: min ${min.toFixed(6)} | max ${max.toFixed(6)} | RMS ${Math.sqrt(sq/a.length).toFixed(6)} | échantillons proches du clipping ${clip} | non finis ${nan}`)}return out.join('\n')}
-function stop(){if(ctx){ctx.close().catch(()=>{});ctx=null}}
-function playBuffer(b){stop();ctx=new (window.AudioContext||window.webkitAudioContext)({sampleRate:b.sampleRate});ctx.resume().then(()=>{const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start()})}
-$('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;stop();$('name').textContent=`${f.name} — ${(f.size/1048576).toFixed(2)} Mo`;const original=url(f);$('native').src=original;$('native').load();try{const AC=window.AudioContext||window.webkitAudioContext;const decoder=new AC();const raw=await f.arrayBuffer();buf=await decoder.decodeAudioData(raw.slice(0));copy=decoder.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++)copy.copyToChannel(new Float32Array(buf.getChannelData(c)),c);const wav=makeWav(buf);const wavUrl=url(wav);$('download').href=wavUrl;$('download').hidden=false;$('download').textContent=`Télécharger le WAV (${(wav.size/1048576).toFixed(2)} Mo)`;$('stats').innerHTML=`<p class="status">Décodage terminé : ${buf.duration.toFixed(2)} s · ${buf.sampleRate} Hz · ${buf.numberOfChannels} canal/canaux</p>`;$('report').textContent=`Original : ${f.type||'type inconnu'}\nBuffer : ${buf.length} frames, ${buf.sampleRate} Hz, ${buf.numberOfChannels} canal/canaux\n\n${stats(buf)}\n\nCopie PCM : ${copy.length} frames, ${copy.sampleRate} Hz\n${stats(copy)}\n\nWAV créé : PCM signé 16 bits little-endian, entrelacé, avec écrêtage limité à [-1, +1].\n\nLecture A et B : AudioBufferSource direct vers la sortie, sans gain ni effet.`;$('a').disabled=$('b').disabled=$('wav').disabled=false;$('wav').onclick=()=>{const a=document.createElement('a');a.href=wavUrl;a.download='buffer_pcm16.wav';a.click()};await decoder.close();}catch(err){$('report').textContent='ERREUR : '+err.message}});
-$('a').onclick=()=>playBuffer(buf);$('b').onclick=()=>playBuffer(copy);
-</script></body></html>
+(() => {
+const $ = id => document.getElementById(id);
+const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
+let fileURL=null, duration=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
+let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), seqStart=0;
+const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
+function say(s){$('status').textContent=s}
+function initAudio(){
+ if(audioCtx) return;
+ const AC=window.AudioContext||window.webkitAudioContext;
+ if(!AC) throw new Error('Web Audio non disponible dans ce navigateur.');
+ audioCtx=new AC(); master=audioCtx.createGain(); master.gain.value=Number($('volume').value)/100; master.connect(audioCtx.destination);
+}
+function stopVoice(v){clearTimeout(v.timer);v.timer=null;v.audio.pause();try{v.audio.currentTime=0}catch(e){}}
+function stopAll(){voices.forEach(stopVoice);document.querySelectorAll('.slice').forEach(n=>n.classList.remove('playing'))}
+function makeVoices(){
+ stopAll(); voices.forEach(v=>{try{v.audio.pause();v.audio.removeAttribute('src');v.audio.load()}catch(e){}});
+ voices=[];
+ for(let i=0;i<8;i++){
+  const a=new Audio(); a.preload='auto'; a.src=fileURL;
+  const src=audioCtx.createMediaElementSource(a), gain=audioCtx.createGain();
+  src.connect(gain);gain.connect(master);
+  voices.push({audio:a,gain,timer:null});
+ }
+}
+function bounds(part){
+ const start=duration*part/count, end=duration*(part+1)/count;
+ return {start,end};
+}
+async function playPart(part){
+ if(!fileURL||!duration)return;
+ try{
+  initAudio(); if(audioCtx.state==='suspended')await audioCtx.resume();
+  const v=voices.find(x=>x.audio.paused)||voices[0];
+  if(!v.audio.paused)stopVoice(v);
+  const {start,end}=bounds(part), rate=Number($('pitch').value)/100;
+  const fade=Number($('fade').value)/1000;
+  v.audio.playbackRate=rate;v.audio.preservesPitch=false;
+  v.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+  v.gain.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime);
+  v.audio.pause();
+  const seek=()=>{v.audio.removeEventListener('seeked',seek);startPlayback()};
+  const startPlayback=()=>{
+   const now=audioCtx.currentTime, realLength=(end-start)/rate;
+   if(fade>0&&realLength>fade){v.gain.gain.setValueAtTime(Number($('volume').value)/100,now+Math.max(0,realLength-fade));v.gain.gain.linearRampToValueAtTime(0,now+realLength)}
+   v.audio.play().then(()=>{
+    const sliceNode=svg.querySelector(`[data-part="${part}"]`);if(sliceNode)sliceNode.classList.add('playing');
+    v.timer=setTimeout(()=>{stopVoice(v);if(sliceNode)sliceNode.classList.remove('playing');v.gain.gain.cancelScheduledValues(audioCtx.currentTime);v.gain.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime)},Math.max(30,realLength*1000));
+   }).catch(e=>say('Lecture impossible : '+e.message));
+  };
+  if(Math.abs(v.audio.currentTime-start)>.015){v.audio.addEventListener('seeked',seek,{once:true});v.audio.currentTime=start;setTimeout(()=>{if(v.audio.paused&&v.audio.currentTime>=start-.05)startPlayback()},120)}
+  else startPlayback();
+ }catch(e){say('Erreur audio : '+e.message)}
+}
+function renderPizza(){
+ svg.innerHTML='';
+ const cx=200,cy=200,r=174;
+ for(let i=0;i<count;i++){
+  const a0=(-Math.PI/2)+(i/count)*Math.PI*2, a1=(-Math.PI/2)+((i+1)/count)*Math.PI*2;
+  const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+  const large=(a1-a0)>Math.PI?1:0;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`);
+  path.setAttribute('fill',colors[order.indexOf(i)%colors.length]||colors[i%colors.length]);
+  path.setAttribute('class','slice'+(i===selected?' selected':''));path.dataset.part=i;
+  path.addEventListener('click',()=>{selected=i;renderPizza();updateSelection()});svg.appendChild(path);
+  const mid=(a0+a1)/2, rr=112, tx=cx+rr*Math.cos(mid),ty=cy+rr*Math.sin(mid);
+  const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('x',tx);text.setAttribute('y',ty);text.setAttribute('class','slice-label');text.textContent=String(order.indexOf(i)+1);svg.appendChild(text);
+ }
+ const center=document.createElementNS('http://www.w3.org/2000/svg','circle');center.setAttribute('cx',cx);center.setAttribute('cy',cy);center.setAttribute('r',35);center.setAttribute('fill','#171714');center.setAttribute('stroke','#45443a');center.setAttribute('stroke-width','3');svg.appendChild(center);
+ const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',cx);label.setAttribute('y',cy+4);label.setAttribute('fill','#f1eedf');label.setAttribute('font-size','11');label.setAttribute('font-weight','900');label.setAttribute('text-anchor','middle');label.textContent='SAMPLE';svg.appendChild(label);
+}
+function updateSelection(){
+ $('selectedName').textContent='PART '+String(order.indexOf(selected)+1).padStart(2,'0');
+ if(duration){const b=bounds(selected);$('selectedTime').textContent=`${b.start.toFixed(2)}s → ${b.end.toFixed(2)}s · ${(b.end-b.start).toFixed(2)}s`}
+}
+function renderSteps(){
+ $('steps').innerHTML='';
+ stepPattern.forEach((on,i)=>{const b=document.createElement('button');b.className='step'+(on?' on':'');b.textContent=order[i%count]+1;b.addEventListener('click',()=>{stepPattern[i]=!stepPattern[i];renderSteps()});$('steps').appendChild(b)});
+}
+function stopSequence(){if(seqTimer)clearInterval(seqTimer);seqTimer=null;seqRunning=false;$('seqPlay').textContent='▶ Lancer la séquence';document.querySelectorAll('.step').forEach(n=>n.classList.remove('current'))}
+function tickSequence(){
+ const bpm=Math.max(40,Math.min(220,Number($('bpm').value)||90)), interval=60000/bpm;
+ document.querySelectorAll('.step').forEach((n,i)=>n.classList.toggle('current',i===seqIndex));
+ if(stepPattern[seqIndex])playPart(order[seqIndex%count]);
+ seqIndex=(seqIndex+1)%8;
+}
+function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;renderPizza();updateSelection();renderSteps()}
+fileInput.addEventListener('change',()=>{
+ const f=fileInput.files&&fileInput.files[0];if(!f)return;
+ if(!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return}
+ if(fileURL)URL.revokeObjectURL(fileURL);
+ fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
+ $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
+ preview.onloadedmetadata=()=>{
+  duration=preview.duration;$('duration').textContent=duration.toFixed(1)+' s';
+  $('preview').disabled=false;$('stopPreview').disabled=false;
+  ['playSlice','stopAll','reverse','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
+  try{initAudio();makeVoices();say('Prêt. La lecture utilise le fichier original, sans décodage PCM.')}catch(e){say(e.message)}
+  updateSelection();renderPizza();renderSteps();
+ };
+ preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
+});
+$('preview').addEventListener('click',()=>{preview.play().catch(e=>say(e.message))});
+$('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=0});
+$('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder()});
+$('playSlice').addEventListener('click',()=>playPart(selected));
+$('stopAll').addEventListener('click',stopAll);
+$('volume').addEventListener('input',()=>{$('volOut').textContent=$('volume').value+'%';if(master)master.gain.setTargetAtTime(Number($('volume').value)/100,audioCtx.currentTime,.01)});
+$('pitch').addEventListener('input',()=>$('pitchOut').textContent=(Number($('pitch').value)/100).toFixed(2)+'×');
+$('fade').addEventListener('input',()=>$('fadeOut').textContent=$('fade').value+' ms');
+$('reverse').addEventListener('click',()=>{order.reverse();renderPizza();renderSteps()});
+$('shuffle').addEventListener('click',()=>{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}renderPizza();renderSteps()});
+$('reset').addEventListener('click',resetOrder);
+$('seqPlay').addEventListener('click',async()=>{if(seqRunning)return;try{initAudio();if(audioCtx.state==='suspended')await audioCtx.resume();seqRunning=true;seqIndex=0;$('seqPlay').textContent='● Séquence en cours';tickSequence();seqTimer=setInterval(tickSequence,60000/Math.max(40,Math.min(220,Number($('bpm').value)||90)))}catch(e){say(e.message)}});
+$('seqStop').addEventListener('click',()=>{stopSequence();stopAll()});
+$('clearSteps').addEventListener('click',()=>{stepPattern.fill(false);renderSteps()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&seqRunning){stopSequence();stopAll()}});
+resetOrder();
+})();
+</script>
+</body>
+</html>
