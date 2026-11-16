@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171717">
+  <title>Sample Test — lecture brute</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #171717; color: #f3f0e9; display: grid; place-items: center; padding: 22px; }
+    main { width: min(100%, 520px); }
+    h1 { margin: 0 0 7px; font-size: 1.65rem; letter-spacing: -.04em; }
+    .sub { color: #aaa69e; margin: 0 0 25px; line-height: 1.45; }
+    .panel { border: 1px solid #393939; border-radius: 16px; padding: 20px; background: #202020; }
+    label { display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 12px 16px; border: 1px dashed #777; border-radius: 11px; background: #292929; font-weight: 650; cursor: pointer; text-align: center; }
+    input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    #info { margin: 18px 0 12px; color: #c9c5bc; font-size: .9rem; overflow-wrap: anywhere; }
+    audio { display: block; width: 100%; margin-top: 12px; }
+    .note { color: #99958d; font-size: .82rem; line-height: 1.45; margin: 18px 2px 0; }
+    .empty { color: #8e8a83; text-align: center; padding: 22px 0 8px; }
+    button { margin-top: 14px; width: 100%; border: 1px solid #555; border-radius: 9px; background: transparent; color: #ddd; padding: 10px; font: inherit; }
+    button:disabled { opacity: .35; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Sample Test</h1>
+    <p class="sub">Importe un fichier et écoute-le, sans effets ni traitement audio.</p>
+    <section class="panel">
+      <label for="file">＋ Choisir un sample audio</label>
+      <input id="file" type="file" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a">
+      <div id="info" class="empty">Aucun fichier chargé.</div>
+      <audio id="player" controls preload="metadata" hidden></audio>
+      <button id="clear" type="button" disabled>Retirer le sample</button>
+    </section>
+    <p class="note">Lecture directe par le lecteur audio du navigateur. Aucun séquenceur, normalisation, compresseur, filtre, effet ou conversion volontaire dans cette page.</p>
+  </main>
+  <script>
+    const input = document.getElementById('file');
+    const player = document.getElementById('player');
+    const info = document.getElementById('info');
+    const clear = document.getElementById('clear');
+    let currentUrl = null;
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' octets';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' Mo';
+    }
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return 'durée inconnue';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    function reset() {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+      player.hidden = true;
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
+      input.value = '';
+      info.textContent = 'Aucun fichier chargé.';
+      info.className = 'empty';
+      clear.disabled = true;
+    }
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(file);
+      player.pause();
+      player.src = currentUrl;
+      player.hidden = false;
+      clear.disabled = false;
+      info.className = '';
+      info.textContent = `${file.name} · ${formatBytes(file.size)} · ${file.type || 'type non indiqué'}`;
+      player.load();
+    });
+    player.addEventListener('loadedmetadata', () => {
+      const duration = formatTime(player.duration);
+      info.textContent = info.textContent.replace(/ · durée .+$/, '') + ` · durée ${duration}`;
+    });
+    clear.addEventListener('click', reset);
+    window.addEventListener('pagehide', () => { if (currentUrl) URL.revokeObjectURL(currentUrl); });
+  </script>
+</body>
+</html>
