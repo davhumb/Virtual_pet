@@ -1,88 +1,90 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#10120f">
-<title>SNIPER — Vinyl Hunter</title>
-<style>
-:root{--bg:#10120f;--panel:#191d18;--panel2:#20251e;--line:#343b30;--text:#edf0e7;--muted:#9aa391;--acid:#c7f36b;--red:#ff765e;--gold:#e9c46a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
-button,input,select{font:inherit}button{cursor:pointer}.shell{max-width:1100px;margin:auto;padding:22px}
-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0 20px}
-.brand{font-size:25px;font-weight:900;letter-spacing:.12em}.brand span{color:var(--acid)}.tag{color:var(--muted);font-size:11px;letter-spacing:.18em;text-transform:uppercase}
-.status{border:1px solid var(--line);border-radius:30px;padding:7px 11px;color:var(--muted);font-size:11px;letter-spacing:.08em}.dot{display:inline-block;width:7px;height:7px;background:var(--gold);border-radius:50%;margin-right:7px}
-.hero{padding:34px 0 24px;display:flex;justify-content:space-between;gap:20px;align-items:end}.eyebrow{color:var(--acid);font-size:11px;letter-spacing:.2em;text-transform:uppercase}.hero h1{font-size:clamp(32px,6vw,58px);line-height:.98;margin:9px 0 12px;letter-spacing:-.05em}.hero p{color:var(--muted);max-width:540px;margin:0}.hero-mark{font-size:64px;color:#343b30;line-height:1}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 24px}.stat,.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}.stat{padding:14px 16px}.stat b{display:block;font-size:25px}.stat small{color:var(--muted);font-size:10px;letter-spacing:.13em;text-transform:uppercase}
-.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 12px}.section-head h2{font-size:16px;letter-spacing:.08em;text-transform:uppercase;margin:0}.count{color:var(--muted);font-size:12px}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap}.field{background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:11px 12px;min-width:0}.field::placeholder{color:#778071}.search{flex:1;min-width:180px}
-.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:8px;font-weight:700}.btn:hover{border-color:var(--acid)}.btn.primary{background:var(--acid);color:#14180f;border-color:var(--acid)}.btn.danger{color:var(--red)}
-.list{display:grid;gap:9px}.record{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px}.sleeve{width:54px;height:54px;border-radius:5px;background:linear-gradient(145deg,#30382b,#171b16);border:1px solid #46503c;display:grid;place-items:center;color:var(--acid);font-weight:900;font-size:18px}.record h3{margin:0 0 3px;font-size:15px}.meta{color:var(--muted);font-size:12px}.target{font-size:12px;color:var(--muted);text-align:right}.target b{display:block;color:var(--acid);font-size:18px}.record-actions{display:flex;gap:6px;margin-top:7px}.tiny{padding:5px 8px;font-size:11px}
-.empty{padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
-.note{border-left:2px solid var(--gold);padding:10px 13px;color:var(--muted);font-size:12px;background:#1a1c16;border-radius:0 8px 8px 0;margin-top:22px}
-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;width:min(480px,calc(100% - 28px));padding:22px}dialog::backdrop{background:#000b}.form{display:grid;gap:10px}.form label{display:grid;gap:5px;color:var(--muted);font-size:12px}.form input,.form select{width:100%}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.close{float:right;background:none;border:0;color:var(--muted);font-size:22px}
-footer{color:#687061;font-size:11px;text-align:center;padding:28px 0 8px}
-@media(max-width:620px){.shell{padding:16px}.hero{padding-top:26px}.hero-mark{display:none}.stats{gap:7px}.stat{padding:11px}.stat b{font-size:21px}.record{grid-template-columns:44px minmax(0,1fr);gap:10px}.sleeve{width:44px;height:44px}.target{grid-column:2;text-align:left;display:flex;gap:6px;align-items:center}.target b{font-size:15px}.section-head{align-items:flex-start;flex-direction:column}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171717">
+  <title>Sample Test — lecture brute</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #171717; color: #f3f0e9; display: grid; place-items: center; padding: 22px; }
+    main { width: min(100%, 520px); }
+    h1 { margin: 0 0 7px; font-size: 1.65rem; letter-spacing: -.04em; }
+    .sub { color: #aaa69e; margin: 0 0 25px; line-height: 1.45; }
+    .panel { border: 1px solid #393939; border-radius: 16px; padding: 20px; background: #202020; }
+    label { display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 12px 16px; border: 1px dashed #777; border-radius: 11px; background: #292929; font-weight: 650; cursor: pointer; text-align: center; }
+    input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    #info { margin: 18px 0 12px; color: #c9c5bc; font-size: .9rem; overflow-wrap: anywhere; }
+    audio { display: block; width: 100%; margin-top: 12px; }
+    .note { color: #99958d; font-size: .82rem; line-height: 1.45; margin: 18px 2px 0; }
+    .empty { color: #8e8a83; text-align: center; padding: 22px 0 8px; }
+    button { margin-top: 14px; width: 100%; border: 1px solid #555; border-radius: 9px; background: transparent; color: #ddd; padding: 10px; font: inherit; }
+    button:disabled { opacity: .35; }
+  </style>
 </head>
 <body>
-<div class="shell">
-<header><div><div class="brand">SNI<span>PER</span></div><div class="tag">Vinyl hunter · no AI · just records</div></div><div class="status"><i class="dot"></i>RADAR EN ATTENTE</div></header>
-<section class="hero"><div><div class="eyebrow">Collection intelligence</div><h1>La bonne galette.<br>Au bon prix.</h1><p>Constitue ta liste de recherche. SNIPER gardera tes cibles sous la main et préparera leur surveillance.</p></div><div class="hero-mark">◎</div></section>
-<section class="stats"><div class="stat"><b id="statCount">0</b><small>Cibles en wishlist</small></div><div class="stat"><b id="statBudget">—</b><small>Budget cumulé max.</small></div><div class="stat"><b id="statAlerts">0</b><small>Nouvelles alertes</small></div></section>
-<div class="section-head"><h2>Ta liste de chasse</h2><span class="count" id="resultCount">0 disque</span></div>
-<div class="toolbar"><input class="field search" id="search" placeholder="Artiste, album, label, référence…"><select class="field" id="sort"><option value="added">Ajout récent</option><option value="price">Prix cible ↑</option><option value="artist">Artiste A–Z</option></select><button class="btn primary" id="addBtn">＋ Ajouter une cible</button></div>
-<div class="list" id="list" style="margin-top:12px"></div>
-<div class="note"><b>ÉTAT DU RADAR :</b> cette première version est un prototype local. Ta wishlist est enregistrée sur cet appareil. Les recherches marketplace et la surveillance quotidienne seront branchées ensuite via des sources autorisées (API, flux ou intégrations disponibles). Aucun résultat fictif ne sera présenté comme une vraie annonce.</div>
-<footer>SNIPER v0.1 · LOCAL WISHLIST · NO AI KEYS</footer>
-</div>
-<dialog id="modal"><button class="close" id="closeBtn" aria-label="Fermer">×</button><h2 style="margin:0 0 16px">Nouvelle cible</h2>
-<form class="form" id="recordForm">
-<label>Artiste *<input class="field" name="artist" required placeholder="MF DOOM"></label>
-<label>Album / single *<input class="field" name="album" required placeholder="Operation: Doomsday"></label>
-<label>Pressage / référence catalogue<input class="field" name="pressing" placeholder="Fondle 'Em · FE-..." ></label>
-<label>État minimum<select class="field" name="condition"><option>VG+</option><option>VG</option><option>EX</option><option>NM</option><option>Mint</option><option>Peu importe</option></select></label>
-<label>Prix maximum (€)<input class="field" name="maxPrice" type="number" min="0" step="0.01" required placeholder="60"></label>
-<label>Prix idéal (€)<input class="field" name="idealPrice" type="number" min="0" step="0.01" placeholder="35"></label>
-<div class="form-actions"><button type="button" class="btn" id="cancelBtn">Annuler</button><button class="btn primary" type="submit">Enregistrer</button></div>
-</form></dialog>
-<script>
-const KEY='sniper-vinyl-wishlist-v1';
-let records=JSON.parse(localStorage.getItem(KEY)||'[]');
-const $=id=>document.getElementById(id);
-const euro=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
-function save(){localStorage.setItem(KEY,JSON.stringify(records));render()}
-function render(){
- const q=$('search').value.toLowerCase().trim();
- let shown=records.filter(r=>[r.artist,r.album,r.pressing].join(' ').toLowerCase().includes(q));
- const sort=$('sort').value;
- shown.sort((a,b)=>sort==='price'?a.maxPrice-b.maxPrice:sort==='artist'?a.artist.localeCompare(b.artist):b.created-a.created);
- $('statCount').textContent=records.length;
- $('statBudget').textContent=records.length?euro(records.reduce((s,r)=>s+Number(r.maxPrice||0),0)):'—';
- $('statAlerts').textContent='0';
- $('resultCount').textContent=shown.length+' disque'+(shown.length>1?'s':'');
- $('list').innerHTML='';
- if(!shown.length){$('list').innerHTML='<div class="empty">'+(records.length?'Aucune cible ne correspond à cette recherche.':'Aucune cible pour le moment.<br>Ajoute ton premier disque à traquer.')+'</div>';return}
- shown.forEach(r=>{
-  const el=document.createElement('article');el.className='card record';
-  const sleeve=document.createElement('div');sleeve.className='sleeve';sleeve.textContent=(r.artist||'?').slice(0,1).toUpperCase();
-  const info=document.createElement('div');
-  const h=document.createElement('h3');h.textContent=r.artist+' — '+r.album;
-  const meta=document.createElement('div');meta.className='meta';meta.textContent=[r.pressing||'Pressage non précisé','État min. '+r.condition].join(' · ');
-  const actions=document.createElement('div');actions.className='record-actions';
-  const edit=document.createElement('button');edit.className='btn tiny';edit.textContent='Modifier';edit.onclick=()=>openEdit(r.id);
-  const del=document.createElement('button');del.className='btn tiny danger';del.textContent='Retirer';del.onclick=()=>{if(confirm('Retirer cette cible de ta wishlist ?')){records=records.filter(x=>x.id!==r.id);save()}};
-  actions.append(edit,del);info.append(h,meta,actions);
-  const target=document.createElement('div');target.className='target';target.innerHTML='<span>PRIX MAX.</span>';
-  const price=document.createElement('b');price.textContent=euro(Number(r.maxPrice));target.append(price);
-  el.append(sleeve,info,target);$('list').append(el);
- });
-}
-let editing=null;
-function openEdit(id){editing=id;const r=records.find(x=>x.id===id);const f=$('recordForm');for(const k of ['artist','album','pressing','condition','maxPrice','idealPrice'])f.elements[k].value=r[k]??'';$('modal').showModal()}
-function openAdd(){editing=null;$('recordForm').reset();$('modal').showModal()}
-$('addBtn').onclick=openAdd;$('closeBtn').onclick=()=>$('modal').close();$('cancelBtn').onclick=()=>$('modal').close();
-$('recordForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);const item={id:editing||crypto.randomUUID(),artist:f.get('artist').trim(),album:f.get('album').trim(),pressing:f.get('pressing').trim(),condition:f.get('condition'),maxPrice:Number(f.get('maxPrice')),idealPrice:f.get('idealPrice')===''?null:Number(f.get('idealPrice')),created:editing?(records.find(x=>x.id===editing)?.created||Date.now()):Date.now()};if(editing)records=records.map(r=>r.id===editing?item:r);else records.push(item);$('modal').close();save()};
-$('search').oninput=render;$('sort').onchange=render;render();
-</script>
-</body></html>
+  <main>
+    <h1>Sample Test</h1>
+    <p class="sub">Importe un fichier et écoute-le, sans effets ni traitement audio.</p>
+    <section class="panel">
+      <label for="file">＋ Choisir un sample audio</label>
+      <input id="file" type="file" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a">
+      <div id="info" class="empty">Aucun fichier chargé.</div>
+      <audio id="player" controls preload="metadata" hidden></audio>
+      <button id="clear" type="button" disabled>Retirer le sample</button>
+    </section>
+    <p class="note">Lecture directe par le lecteur audio du navigateur. Aucun séquenceur, normalisation, compresseur, filtre, effet ou conversion volontaire dans cette page.</p>
+  </main>
+  <script>
+    const input = document.getElementById('file');
+    const player = document.getElementById('player');
+    const info = document.getElementById('info');
+    const clear = document.getElementById('clear');
+    let currentUrl = null;
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' octets';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' Mo';
+    }
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return 'durée inconnue';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    function reset() {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+      player.hidden = true;
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
+      input.value = '';
+      info.textContent = 'Aucun fichier chargé.';
+      info.className = 'empty';
+      clear.disabled = true;
+    }
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(file);
+      player.pause();
+      player.src = currentUrl;
+      player.hidden = false;
+      clear.disabled = false;
+      info.className = '';
+      info.textContent = `${file.name} · ${formatBytes(file.size)} · ${file.type || 'type non indiqué'}`;
+      player.load();
+    });
+    player.addEventListener('loadedmetadata', () => {
+      const duration = formatTime(player.duration);
+      info.textContent = info.textContent.replace(/ · durée .+$/, '') + ` · durée ${duration}`;
+    });
+    clear.addEventListener('click', reset);
+    window.addEventListener('pagehide', () => { if (currentUrl) URL.revokeObjectURL(currentUrl); });
+  </script>
+</body>
+</html>
