@@ -2,26 +2,48 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diagnostic audio — Celluloïd</title>
+<title>Test PCM → WAV</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111;color:#eee;font:16px system-ui,sans-serif;padding:18px;display:grid;place-items:center;min-height:100vh}.card{width:min(100%,560px);background:#1d1d1d;border:1px solid #393939;border-radius:16px;padding:20px}h1{font-size:22px;margin:0 0 8px}p{color:#aaa;line-height:1.45}.pick{display:block;margin:18px 0;padding:14px;border:1px dashed #777;border-radius:10px}input{max-width:100%}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}button{border:0;border-radius:9px;padding:12px 9px;background:#e5e5e5;color:#111;font-weight:700;font-size:14px}button:disabled{opacity:.35}#stop{background:#555;color:white}.box{padding:12px;background:#131313;border-radius:10px;margin-top:12px}.box h2{font-size:15px;margin:0 0 8px}.box p{font-size:13px;margin:6px 0}.status{font-size:13px;color:#aaa;overflow-wrap:anywhere;line-height:1.5}audio{width:100%;margin-top:8px}.note{font-size:13px;color:#888;border-top:1px solid #383838;padding-top:14px;margin-top:18px}
-</style></head><body><main class="card">
-<h1>Diagnostic audio</h1><p>Trois chemins de lecture, sans effets ni traitement. Charge le même sample long.</p>
-<label class="pick">Choisir le sample<br><input id="file" type="file" accept="audio/*"></label>
-<div class="box"><h2>1 — Lecture native (référence)</h2><p>Le navigateur lit directement le fichier.</p><audio id="native" controls></audio></div>
-<div class="box"><h2>2 — Web Audio : AudioBuffer</h2><p>Décodage PCM puis lecture par BufferSource (comme le test précédent).</p><button id="bufferPlay" disabled>▶ Lire AudioBuffer</button></div>
-<div class="box"><h2>3 — HTML audio connecté à Web Audio</h2><p>Le navigateur décode et lit le fichier, mais le son passe par le moteur Web Audio.</p><button id="mediaPlay" disabled>▶ Lire via Web Audio</button></div>
-<div class="row"><button id="stop" disabled>■ Stop Web Audio</button><button id="reset">Réinitialiser</button></div>
-<div class="box"><h2>Infos techniques</h2><div id="info" class="status">En attente du fichier.</div></div>
-<div class="note">Fais les essais dans cet ordre : 1, puis 2, puis 3. Attends l’arrêt complet entre les essais. Note précisément lesquels grésillent.</div>
-</main><script>
-const $=s=>document.querySelector(s);let ctx=null,buf=null,src=null,mediaNode=null,objectUrl=null;
-const file=$('#file'),native=$('#native'),bplay=$('#bufferPlay'),mplay=$('#mediaPlay'),stopBtn=$('#stop'),info=$('#info');
-function getCtx(){if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();return ctx}
-function stop(){if(src){try{src.stop()}catch(e){}try{src.disconnect()}catch(e){}src=null}native.pause();native.currentTime=0;stopBtn.disabled=true;bplay.disabled=!buf;mplay.disabled=!objectUrl}
-file.addEventListener('change',async()=>{stop();buf=null;if(objectUrl)URL.revokeObjectURL(objectUrl);const f=file.files?.[0];if(!f)return;objectUrl=URL.createObjectURL(f);native.src=objectUrl;info.textContent='Décodage…';try{const c=getCtx();buf=await c.decodeAudioData(await f.arrayBuffer());bplay.disabled=false;mplay.disabled=false;info.textContent=`Fichier : ${f.name}\nTaille : ${(f.size/1048576).toFixed(2)} Mo\nDurée : ${buf.duration.toFixed(2)} s\nCanaux : ${buf.numberOfChannels}\nSample rate du fichier décodé : ${buf.sampleRate} Hz\nSample rate AudioContext : ${c.sampleRate} Hz\nÉtat AudioContext : ${c.state}\nBase latency : ${c.baseLatency??'non fourni'} s\nMax PCM : ${Math.max(...Array.from({length:buf.numberOfChannels},(_,i)=>{let d=buf.getChannelData(i),m=0;for(let j=0;j<d.length;j+=16)m=Math.max(m,Math.abs(d[j]));return m})).toFixed(5)}`;}catch(e){info.textContent='Erreur de décodage : '+e.message}}
-);
-bplay.addEventListener('click',async()=>{stop();const c=getCtx();if(c.state!=='running')await c.resume();src=c.createBufferSource();src.buffer=buf;src.connect(c.destination);src.onended=()=>{if(src){src.disconnect();src=null}stopBtn.disabled=true;bplay.disabled=false};src.start();stopBtn.disabled=false;bplay.disabled=true});
-mplay.addEventListener('click',async()=>{stop();const c=getCtx();if(c.state!=='running')await c.resume();native.currentTime=0;mediaNode=c.createMediaElementSource(native);mediaNode.connect(c.destination);await native.play();stopBtn.disabled=false;mplay.disabled=true;native.onended=()=>{stopBtn.disabled=true;mplay.disabled=false;try{mediaNode.disconnect()}catch(e){}}});
-stopBtn.addEventListener('click',()=>{stop();try{mediaNode?.disconnect()}catch(e){}mediaNode=null});$('#reset').addEventListener('click',()=>{stop();try{mediaNode?.disconnect()}catch(e){}mediaNode=null;native.removeAttribute('src');native.load();file.value='';buf=null;info.textContent='En attente du fichier.';bplay.disabled=true;mplay.disabled=true});
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:22px;background:#171717;color:#f2f2f2;font:16px/1.5 system-ui,sans-serif}.wrap{max-width:680px;margin:auto}.card{background:#242424;border-radius:18px;padding:20px;margin:16px 0}h1{font-size:25px;margin:0 0 8px}p{color:#bbb}input,button{font:inherit}input{max-width:100%;padding:12px;background:#333;border-radius:10px}button{border:0;border-radius:12px;padding:14px 18px;font-weight:700;background:#eee;color:#111;margin:8px 8px 8px 0}button:disabled{opacity:.4}audio{width:100%;margin-top:12px}small{color:#aaa}.status{white-space:pre-wrap;color:#ddd;overflow-wrap:anywhere}
+</style></head>
+<body><main class="wrap">
+<h1>Diagnostic PCM → WAV</h1>
+<p>Ce test décode ton MP3 avec Web Audio, réencode les échantillons décodés en WAV PCM, puis laisse le navigateur lire ce WAV avec son lecteur natif.</p>
+<section class="card">
+<label for="file"><strong>1 — Choisir exactement le même sample</strong></label><br><br>
+<input id="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg">
+<p id="status" class="status">En attente du fichier.</p>
+<button id="make" disabled>Décoder et créer le WAV</button>
+</section>
+<section class="card">
+<strong>2 — Lire le WAV reconstruit (lecteur natif)</strong>
+<audio id="player" controls></audio>
+<p><a id="download" hidden download="sample-decode-web-audio.wav" style="color:#9dc8ff">Télécharger le WAV reconstruit</a></p>
+</section>
+<section class="card"><strong>Comment interpréter :</strong><p>• Si le WAV reconstruit grésille aussi : le problème apparaît probablement pendant le décodage ou dans les données PCM obtenues.</p><p>• Si le WAV reconstruit est propre : les données décodées sont probablement bonnes ; le souci se situe plutôt dans la lecture AudioBufferSource ou son interaction avec le navigateur/appareil.</p><small>Le WAV est créé localement dans le navigateur. Aucun fichier n'est envoyé.</small></section>
+</main>
+<script>
+const fileInput=document.getElementById('file'), make=document.getElementById('make'), status=document.getElementById('status'), player=document.getElementById('player'), download=document.getElementById('download');
+let currentUrl=null;
+fileInput.addEventListener('change',()=>{make.disabled=!fileInput.files.length;status.textContent=fileInput.files.length?'Fichier : '+fileInput.files[0].name+' ('+(fileInput.files[0].size/1024/1024).toFixed(2)+' Mo)':'En attente du fichier.';player.removeAttribute('src');download.hidden=true;if(currentUrl)URL.revokeObjectURL(currentUrl);});
+make.addEventListener('click',async()=>{
+ const f=fileInput.files[0];if(!f)return;make.disabled=true;status.textContent='Décodage en cours…';
+ try{
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const buf=await ctx.decodeAudioData(await f.arrayBuffer());
+  const channels=buf.numberOfChannels, frames=buf.length, rate=buf.sampleRate;
+  const bytesPerSample=2, blockAlign=channels*bytesPerSample, dataSize=frames*blockAlign;
+  const out=new ArrayBuffer(44+dataSize), view=new DataView(out);
+  function str(o,s){for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i));}
+  str(0,'RIFF');view.setUint32(4,36+dataSize,true);str(8,'WAVE');str(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,rate,true);view.setUint32(28,rate*blockAlign,true);view.setUint16(32,blockAlign,true);view.setUint16(34,16,true);str(36,'data');view.setUint32(40,dataSize,true);
+  const data=Array.from({length:channels},(_,c)=>buf.getChannelData(c));let offset=44;
+  for(let i=0;i<frames;i++)for(let c=0;c<channels;c++){
+   let x=Math.max(-1,Math.min(1,data[c][i]));view.setInt16(offset,x<0?x*32768:x*32767,true);offset+=2;
+  }
+  const blob=new Blob([out],{type:'audio/wav'});if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=URL.createObjectURL(blob);player.src=currentUrl;download.href=currentUrl;download.hidden=false;
+  status.textContent=`WAV créé.\nDurée : ${buf.duration.toFixed(2)} s\nCanaux : ${channels}\nFréquence : ${rate} Hz\nPCM : ${frames.toLocaleString('fr-FR')} images par canal\nTaille WAV : ${(blob.size/1024/1024).toFixed(2)} Mo`;
+  await ctx.close();
+ }catch(e){status.textContent='Erreur : '+e.message;}
+ finally{make.disabled=false;}
+});
 </script></body></html>
