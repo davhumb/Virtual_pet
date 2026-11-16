@@ -1,51 +1,27 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sample Test — Web Audio brut</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnostic audio — Celluloïd</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#111;color:#eee;font:16px system-ui,sans-serif;display:grid;place-items:center;padding:20px}.card{width:min(100%,520px);background:#1c1c1c;border:1px solid #383838;border-radius:16px;padding:22px}h1{font-size:22px;margin:0 0 8px}p{color:#aaa;line-height:1.45}.pick{display:block;margin:20px 0;padding:14px;border:1px dashed #777;border-radius:10px}input{max-width:100%}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}button{border:0;border-radius:9px;padding:12px 18px;background:#e5e5e5;color:#111;font-weight:700;font-size:15px}button:disabled{opacity:.35}#stop{background:#555;color:#fff}#status{margin-top:14px;color:#aaa;font-size:14px;overflow-wrap:anywhere}.note{font-size:13px;color:#888;border-top:1px solid #383838;padding-top:14px;margin-top:20px}
-</style>
-</head>
-<body>
-<main class="card">
-<h1>Sample Test — Web Audio brut</h1>
-<p>Cette version utilise Web Audio, mais sans aucun effet ni traitement : fichier décodé → lecteur → sortie audio.</p>
-<label class="pick">Choisir un sample<br><input id="file" type="file" accept="audio/*"></label>
-<div class="buttons"><button id="play" disabled>▶ Lire</button><button id="stop" disabled>■ Stop</button></div>
-<div id="status">En attente d’un fichier.</div>
-<div class="note">Test : prends exactement le même long sample qui grésillait dans l’application principale. Écoute-le jusqu’au bout, puis compare.</div>
-</main>
-<script>
-const fileInput=document.querySelector('#file');
-const playBtn=document.querySelector('#play');
-const stopBtn=document.querySelector('#stop');
-const status=document.querySelector('#status');
-let ctx=null, buffer=null, source=null;
-function stop(){if(source){try{source.stop()}catch(e){}try{source.disconnect()}catch(e){}source=null}stopBtn.disabled=true;playBtn.disabled=!buffer;}
-fileInput.addEventListener('change',async()=>{
- stop();buffer=null;playBtn.disabled=true;stopBtn.disabled=true;
- const f=fileInput.files&&fileInput.files[0];if(!f)return;
- status.textContent='Décodage du sample…';
- try{
-  if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();
-  if(ctx.state==='suspended')await ctx.resume();
-  buffer=await ctx.decodeAudioData(await f.arrayBuffer());
-  status.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(2)} Mo · ${buffer.duration.toFixed(2)} s · ${buffer.sampleRate} Hz · ${buffer.numberOfChannels} canal/canaux`;
-  playBtn.disabled=false;
- }catch(err){status.textContent='Erreur de décodage : '+err.message;}
-});
-playBtn.addEventListener('click',async()=>{
- if(!buffer)return;stop();
- try{
-  if(ctx.state==='suspended')await ctx.resume();
-  source=ctx.createBufferSource();source.buffer=buffer;source.connect(ctx.destination);
-  source.onended=()=>{if(source){try{source.disconnect()}catch(e){}source=null}stopBtn.disabled=true;playBtn.disabled=false;};
-  source.start();playBtn.disabled=true;stopBtn.disabled=false;
- }catch(err){status.textContent='Erreur de lecture : '+err.message;playBtn.disabled=false;}
-});
-stopBtn.addEventListener('click',stop);
-</script>
-</body>
-</html>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111;color:#eee;font:16px system-ui,sans-serif;padding:18px;display:grid;place-items:center;min-height:100vh}.card{width:min(100%,560px);background:#1d1d1d;border:1px solid #393939;border-radius:16px;padding:20px}h1{font-size:22px;margin:0 0 8px}p{color:#aaa;line-height:1.45}.pick{display:block;margin:18px 0;padding:14px;border:1px dashed #777;border-radius:10px}input{max-width:100%}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}button{border:0;border-radius:9px;padding:12px 9px;background:#e5e5e5;color:#111;font-weight:700;font-size:14px}button:disabled{opacity:.35}#stop{background:#555;color:white}.box{padding:12px;background:#131313;border-radius:10px;margin-top:12px}.box h2{font-size:15px;margin:0 0 8px}.box p{font-size:13px;margin:6px 0}.status{font-size:13px;color:#aaa;overflow-wrap:anywhere;line-height:1.5}audio{width:100%;margin-top:8px}.note{font-size:13px;color:#888;border-top:1px solid #383838;padding-top:14px;margin-top:18px}
+</style></head><body><main class="card">
+<h1>Diagnostic audio</h1><p>Trois chemins de lecture, sans effets ni traitement. Charge le même sample long.</p>
+<label class="pick">Choisir le sample<br><input id="file" type="file" accept="audio/*"></label>
+<div class="box"><h2>1 — Lecture native (référence)</h2><p>Le navigateur lit directement le fichier.</p><audio id="native" controls></audio></div>
+<div class="box"><h2>2 — Web Audio : AudioBuffer</h2><p>Décodage PCM puis lecture par BufferSource (comme le test précédent).</p><button id="bufferPlay" disabled>▶ Lire AudioBuffer</button></div>
+<div class="box"><h2>3 — HTML audio connecté à Web Audio</h2><p>Le navigateur décode et lit le fichier, mais le son passe par le moteur Web Audio.</p><button id="mediaPlay" disabled>▶ Lire via Web Audio</button></div>
+<div class="row"><button id="stop" disabled>■ Stop Web Audio</button><button id="reset">Réinitialiser</button></div>
+<div class="box"><h2>Infos techniques</h2><div id="info" class="status">En attente du fichier.</div></div>
+<div class="note">Fais les essais dans cet ordre : 1, puis 2, puis 3. Attends l’arrêt complet entre les essais. Note précisément lesquels grésillent.</div>
+</main><script>
+const $=s=>document.querySelector(s);let ctx=null,buf=null,src=null,mediaNode=null,objectUrl=null;
+const file=$('#file'),native=$('#native'),bplay=$('#bufferPlay'),mplay=$('#mediaPlay'),stopBtn=$('#stop'),info=$('#info');
+function getCtx(){if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();return ctx}
+function stop(){if(src){try{src.stop()}catch(e){}try{src.disconnect()}catch(e){}src=null}native.pause();native.currentTime=0;stopBtn.disabled=true;bplay.disabled=!buf;mplay.disabled=!objectUrl}
+file.addEventListener('change',async()=>{stop();buf=null;if(objectUrl)URL.revokeObjectURL(objectUrl);const f=file.files?.[0];if(!f)return;objectUrl=URL.createObjectURL(f);native.src=objectUrl;info.textContent='Décodage…';try{const c=getCtx();buf=await c.decodeAudioData(await f.arrayBuffer());bplay.disabled=false;mplay.disabled=false;info.textContent=`Fichier : ${f.name}\nTaille : ${(f.size/1048576).toFixed(2)} Mo\nDurée : ${buf.duration.toFixed(2)} s\nCanaux : ${buf.numberOfChannels}\nSample rate du fichier décodé : ${buf.sampleRate} Hz\nSample rate AudioContext : ${c.sampleRate} Hz\nÉtat AudioContext : ${c.state}\nBase latency : ${c.baseLatency??'non fourni'} s\nMax PCM : ${Math.max(...Array.from({length:buf.numberOfChannels},(_,i)=>{let d=buf.getChannelData(i),m=0;for(let j=0;j<d.length;j+=16)m=Math.max(m,Math.abs(d[j]));return m})).toFixed(5)}`;}catch(e){info.textContent='Erreur de décodage : '+e.message}}
+);
+bplay.addEventListener('click',async()=>{stop();const c=getCtx();if(c.state!=='running')await c.resume();src=c.createBufferSource();src.buffer=buf;src.connect(c.destination);src.onended=()=>{if(src){src.disconnect();src=null}stopBtn.disabled=true;bplay.disabled=false};src.start();stopBtn.disabled=false;bplay.disabled=true});
+mplay.addEventListener('click',async()=>{stop();const c=getCtx();if(c.state!=='running')await c.resume();native.currentTime=0;mediaNode=c.createMediaElementSource(native);mediaNode.connect(c.destination);await native.play();stopBtn.disabled=false;mplay.disabled=true;native.onended=()=>{stopBtn.disabled=true;mplay.disabled=false;try{mediaNode.disconnect()}catch(e){}}});
+stopBtn.addEventListener('click',()=>{stop();try{mediaNode?.disconnect()}catch(e){}mediaNode=null});$('#reset').addEventListener('click',()=>{stop();try{mediaNode?.disconnect()}catch(e){}mediaNode=null;native.removeAttribute('src');native.load();file.value='';buf=null;info.textContent='En attente du fichier.';bplay.disabled=true;mplay.disabled=true});
+</script></body></html>
