@@ -72,7 +72,16 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 </section>
 
 <section class="panel">
-<div class="row"><strong>01 / Découpe</strong><div class="controls"><label for="count">Parts</label><select id="count"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></div></div>
+<div class="row"><strong>01 / Trim du sample</strong><span class="tag">IN / OUT</span></div>
+<p class="note">Définis le début et la fin de la zone à travailler. La découpe circulaire utilisera uniquement cette sélection.</p>
+<div class="range-row"><label for="trimStart">Début</label><output id="trimStartOut">0.00 s</output><input id="trimStart" type="range" min="0" max="1000" value="0" style="grid-column:1/-1"></div>
+<div class="range-row"><label for="trimEnd">Fin</label><output id="trimEndOut">—</output><input id="trimEnd" type="range" min="0" max="1000" value="1000" style="grid-column:1/-1"></div>
+<div class="controls"><button id="trimReset" disabled>↺ Tout le sample</button><button id="previewTrim" disabled>▶ Écouter le trim</button></div>
+<div class="stat" id="trimLength">Zone sélectionnée : —</div>
+</section>
+
+<section class="panel">
+<div class="row"><strong>02 / Découpe</strong><div class="controls"><label for="count">Parts</label><select id="count"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></div></div>
 <div class="pizza-wrap">
 <svg id="pizza" viewBox="0 0 400 400" role="group" aria-label="Découpe circulaire du sample"></svg>
 <div class="pizza-side">
@@ -85,7 +94,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 </section>
 
 <section class="panel">
-<div class="row"><strong>02 / Manipulation</strong><span class="tag">LIVE</span></div>
+<div class="row"><strong>03 / Manipulation</strong><span class="tag">LIVE</span></div>
 <div class="range-row"><label for="volume">Volume</label><output id="volOut">85%</output><input id="volume" type="range" min="0" max="100" value="85" style="grid-column:1/-1"></div>
 <div class="range-row"><label for="pitch">Vitesse / pitch</label><output id="pitchOut">1.00×</output><input id="pitch" type="range" min="50" max="150" value="100" style="grid-column:1/-1"></div>
 <div class="range-row"><label for="fade">Fade de sortie</label><output id="fadeOut">10 ms</output><input id="fade" type="range" min="0" max="250" value="10" style="grid-column:1/-1"></div>
@@ -98,7 +107,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 </section>
 
 <section class="panel">
-<div class="row"><strong>03 / Séquenceur simple</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
+<div class="row"><strong>04 / Séquenceur simple</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
 <div class="steps" id="steps"></div>
 <div class="controls">
 <button class="primary" id="seqPlay" disabled>▶ Lancer la séquence</button>
@@ -113,7 +122,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 (() => {
 const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
-let fileURL=null, duration=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
+let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
 let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), seqStart=0;
 const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
 function say(s){$('status').textContent=s}
@@ -136,8 +145,15 @@ function makeVoices(){
  }
 }
 function bounds(part){
- const start=duration*part/count, end=duration*(part+1)/count;
+ const span=Math.max(0,trimEnd-trimStart);
+ const start=trimStart+span*part/count, end=trimStart+span*(part+1)/count;
  return {start,end};
+}
+function updateTrimUI(){
+ $('trimStartOut').textContent=trimStart.toFixed(2)+' s';
+ $('trimEndOut').textContent=trimEnd.toFixed(2)+' s';
+ $('trimLength').textContent='Zone sélectionnée : '+Math.max(0,trimEnd-trimStart).toFixed(2)+' s';
+ updateSelection();
 }
 async function playPart(part){
  if(!fileURL||!duration)return;
@@ -205,16 +221,46 @@ fileInput.addEventListener('change',()=>{
  fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
  $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
  preview.onloadedmetadata=()=>{
-  duration=preview.duration;$('duration').textContent=duration.toFixed(1)+' s';
+  duration=preview.duration;trimStart=0;trimEnd=duration;
+  $('duration').textContent=duration.toFixed(1)+' s';
+  $('trimStart').value=0;$('trimEnd').value=1000;
   $('preview').disabled=false;$('stopPreview').disabled=false;
+  $('trimReset').disabled=false;$('previewTrim').disabled=false;
   ['playSlice','stopAll','reverse','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
   try{initAudio();makeVoices();say('Prêt. La lecture utilise le fichier original, sans décodage PCM.')}catch(e){say(e.message)}
-  updateSelection();renderPizza();renderSteps();
+  updateTrimUI();updateSelection();renderPizza();renderSteps();
  };
  preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
 });
-$('preview').addEventListener('click',()=>{preview.play().catch(e=>say(e.message))});
-$('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=0});
+function playTrimPreview(){
+ if(!duration)return;
+ preview.pause();
+ const start=trimStart, end=trimEnd;
+ preview.ontimeupdate=()=>{if(preview.currentTime>=end){preview.pause();preview.currentTime=start;preview.ontimeupdate=null}};
+ const begin=()=>{preview.removeEventListener('seeked',begin);preview.play().catch(e=>say(e.message))};
+ preview.addEventListener('seeked',begin,{once:true});
+ preview.currentTime=start;
+}
+$('preview').addEventListener('click',playTrimPreview);
+$('previewTrim').addEventListener('click',playTrimPreview);
+$('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=trimStart;preview.ontimeupdate=null});
+$('trimStart').addEventListener('input',()=>{
+ const minGap=Math.min(.1,duration/100);
+ trimStart=Math.min(Number($('trimStart').value)/1000*duration,trimEnd-minGap);
+ if(trimStart<0)trimStart=0;
+ $('trimStart').value=Math.round(trimStart/duration*1000);
+ updateTrimUI();
+});
+$('trimEnd').addEventListener('input',()=>{
+ const minGap=Math.min(.1,duration/100);
+ trimEnd=Math.max(Number($('trimEnd').value)/1000*duration,trimStart+minGap);
+ if(trimEnd>duration)trimEnd=duration;
+ $('trimEnd').value=Math.round(trimEnd/duration*1000);
+ updateTrimUI();
+});
+$('trimReset').addEventListener('click',()=>{
+ trimStart=0;trimEnd=duration;$('trimStart').value=0;$('trimEnd').value=1000;updateTrimUI();
+});
 $('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder()});
 $('playSlice').addEventListener('click',()=>playPart(selected));
 $('stopAll').addEventListener('click',stopAll);
