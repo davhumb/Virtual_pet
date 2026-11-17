@@ -52,6 +52,84 @@ input[type=range]{width:100%;accent-color:var(--red)}
 hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 </style>
+
+<style>
+:root{
+ --bg:#0d1016;--panel:rgba(24,29,39,.88);--panel2:#202837;--ink:#f4f2e9;
+ --muted:#a2adbd;--red:#ff684f;--yellow:#f6d365;--line:rgba(164,184,211,.17);
+ --green:#a9efb4;--cyan:#70d7e8;--glow:rgba(255,104,79,.25)
+}
+body{
+ background:radial-gradient(ellipse at 12% 0%,rgba(112,215,232,.13),transparent 35%),
+ radial-gradient(ellipse at 90% 22%,rgba(255,104,79,.12),transparent 32%),
+ linear-gradient(160deg,#0d1016,#121722 55%,#0b0e13);
+ background-attachment:fixed;color:var(--ink)
+}
+header{padding:5px 2px 12px}
+.logo{font-size:12px;letter-spacing:.16em}
+.logo span{color:var(--red);text-shadow:0 0 14px var(--red)}
+.tag{background:rgba(255,255,255,.035);border-color:var(--line);color:#c1cbd7;letter-spacing:.1em;text-transform:uppercase}
+h1{font-size:clamp(34px,9vw,54px);letter-spacing:-.065em;line-height:.94;text-shadow:0 5px 30px rgba(0,0,0,.3)}
+.sub{font-size:14px;color:#b7c0cd;max-width:440px}
+.panel{
+ position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(31,39,53,.94),rgba(19,24,34,.94));
+ border:1px solid var(--line);border-radius:19px;padding:17px;margin:14px 0;
+ box-shadow:0 12px 35px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.035);
+ backdrop-filter:blur(12px)
+}
+.panel:before{content:"";position:absolute;left:0;top:0;width:64px;height:2px;background:linear-gradient(90deg,var(--red),transparent);opacity:.8}
+.panel>.row strong{font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.upload{
+ background:linear-gradient(120deg,rgba(255,104,79,.10),rgba(112,215,232,.07));
+ border:1px dashed rgba(112,215,232,.48);border-radius:14px;padding:22px 15px;
+ transition:.2s;box-shadow:inset 0 0 24px rgba(112,215,232,.025)
+}
+.upload:active{transform:scale(.99);border-color:var(--red)}
+.upload strong{font-size:15px}.upload small{display:block;margin-top:4px;color:var(--muted)}
+button,select{
+ background:linear-gradient(180deg,#293548,#202a39);border:1px solid rgba(164,184,211,.22);
+ color:var(--ink);border-radius:11px;padding:10px 13px;
+ box-shadow:0 3px 9px rgba(0,0,0,.16);transition:transform .15s,border-color .15s,filter .15s
+}
+button:hover{border-color:rgba(112,215,232,.55);filter:brightness(1.1)}
+button:active{transform:translateY(1px) scale(.98)}
+button.primary{background:linear-gradient(135deg,#ff795d,#ed4f46);border-color:#ff8b70;color:#1b1112;box-shadow:0 5px 18px rgba(255,104,79,.2);font-weight:900}
+button.active,.step.on{background:linear-gradient(135deg,#f6d365,#e9ad4c);border-color:#ffe08b;color:#191713}
+button:disabled{opacity:.32;filter:grayscale(.5)}
+select{padding:8px 11px}
+.range-row{margin:13px 0}
+.range-row output{color:var(--cyan);font-weight:700}
+input[type=range]{accent-color:var(--red);height:24px;cursor:pointer}
+.pizza-wrap{gap:12px}
+#pizza{filter:drop-shadow(0 12px 22px rgba(0,0,0,.42));overflow:visible}
+.slice{stroke:#151a22;stroke-width:3;transition:filter .18s,stroke-width .18s,opacity .18s;filter:drop-shadow(0 3px 3px rgba(0,0,0,.22))}
+.slice:hover{filter:brightness(1.16) drop-shadow(0 0 8px rgba(112,215,232,.28))}
+.slice.selected{stroke:#fff0a6;stroke-width:7;filter:brightness(1.15) drop-shadow(0 0 11px rgba(246,211,101,.6))}
+.slice.playing{stroke:var(--green);stroke-width:8;filter:brightness(1.2) drop-shadow(0 0 14px rgba(169,239,180,.7))}
+.slice-label{fill:#17202a;font-size:13px;font-weight:950;paint-order:stroke;stroke:rgba(255,255,255,.18);stroke-width:.5px}
+.pizza-side .box{background:linear-gradient(145deg,rgba(112,215,232,.09),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:13px;padding:13px}
+.big{font-size:27px;letter-spacing:-.04em;color:var(--yellow)}
+.stat{color:#b6c2d0}
+.steps{gap:7px}
+.step{border-radius:9px;padding:12px 0;background:#202a39}
+.step.current{outline:2px solid var(--cyan);box-shadow:0 0 13px rgba(112,215,232,.3)}
+.note{color:#aab6c5}
+.status{color:var(--green);font-weight:650}
+footer{color:#7f8b9b;letter-spacing:.04em}
+@media(max-width:560px){
+ body{padding:14px 11px 28px}
+ .panel{padding:14px;border-radius:16px}
+ .pizza-wrap{gap:5px}
+ #pizza{max-width:350px}
+ .pizza-side{grid-template-columns:1fr 1fr}
+ .pizza-side .box{grid-column:1/-1}
+ .pizza-side button{min-height:44px}
+ .steps{gap:5px}
+ .step{padding:11px 0}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+
 </head>
 <body>
 <main>
@@ -73,7 +151,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 
 <section class="panel">
 <div class="row"><strong>01 / Trim du sample</strong><span class="tag">IN / OUT</span></div>
-<p class="note">Définis le début et la fin de la zone à travailler. La découpe circulaire utilisera uniquement cette sélection.</p>
+<p class="note">Définis le point IN et le point OUT. Ensuite, 4 / 8 / 12 / 16 parts divisent toujours cette zone trimée à parts strictement égales — jamais le fichier entier.</p>
 <div class="range-row"><label for="trimStart">Début</label><output id="trimStartOut">0.00 s</output><input id="trimStart" type="range" min="0" max="1000" value="0" style="grid-column:1/-1"></div>
 <div class="range-row"><label for="trimEnd">Fin</label><output id="trimEndOut">—</output><input id="trimEnd" type="range" min="0" max="1000" value="1000" style="grid-column:1/-1"></div>
 <div class="controls"><button id="trimReset" disabled>↺ Tout le sample</button><button id="previewTrim" disabled>▶ Écouter le trim</button></div>
@@ -88,7 +166,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 <div class="box"><label>PART SÉLECTIONNÉE</label><div class="big" id="selectedName">—</div><div class="stat" id="selectedTime">Charge un sample</div></div>
 <button class="primary" id="playSlice" disabled>▶ Jouer cette part</button>
 <button id="stopAll" disabled>■ Stop tous</button>
-<div class="hint note">Tape une part pour la sélectionner. Le bouton la joue. Plusieurs parts peuvent se superposer.</div>
+<div class="hint note">Tape une part pour la sélectionner. Une seule part joue à la fois : lancer une nouvelle part coupe immédiatement la précédente.</div>
 </div>
 </div>
 </section>
@@ -103,7 +181,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 <button id="shuffle" disabled>⤨ Mélanger</button>
 <button id="reset" disabled>Réinitialiser</button>
 </div>
-<p class="note">L'ordre des parts est modifié visuellement et dans le séquenceur. La lecture reste basée sur le fichier original : pas de conversion du sample en WAV.</p>
+<p class="note">L'ordre des parts est modifié visuellement et dans le séquenceur. Une seule voix audio est active à la fois pour éviter les superpositions involontaires. Le fichier original reste la source de lecture : aucune conversion PCM/WAV.</p>
 </section>
 
 <section class="panel">
@@ -132,16 +210,31 @@ function initAudio(){
  if(!AC) throw new Error('Web Audio non disponible dans ce navigateur.');
  audioCtx=new AC(); master=audioCtx.createGain(); master.gain.value=Number($('volume').value)/100; master.connect(audioCtx.destination);
 }
-function stopVoice(v){clearTimeout(v.timer);v.timer=null;v.audio.pause();try{v.audio.currentTime=0}catch(e){}}
-function stopAll(){voices.forEach(stopVoice);document.querySelectorAll('.slice').forEach(n=>n.classList.remove('playing'))}
+let playbackToken=0, activeVoice=null;
+function stopVoice(v){
+ if(!v)return;
+ v.audio.ontimeupdate=null;
+ v.audio.onended=null;
+ v.audio.pause();
+ try{v.audio.currentTime=0}catch(e){}
+ v.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+ v.gain.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime);
+}
+function stopAll(){
+ playbackToken++;
+ voices.forEach(stopVoice);
+ activeVoice=null;
+ document.querySelectorAll('.slice').forEach(n=>n.classList.remove('playing'));
+}
 function makeVoices(){
- stopAll(); voices.forEach(v=>{try{v.audio.pause();v.audio.removeAttribute('src');v.audio.load()}catch(e){}});
+ stopAll();
+ voices.forEach(v=>{try{v.audio.pause();v.audio.removeAttribute('src');v.audio.load()}catch(e){}});
  voices=[];
  for(let i=0;i<8;i++){
   const a=new Audio(); a.preload='auto'; a.src=fileURL;
   const src=audioCtx.createMediaElementSource(a), gain=audioCtx.createGain();
   src.connect(gain);gain.connect(master);
-  voices.push({audio:a,gain,timer:null});
+  voices.push({audio:a,gain});
  }
 }
 function bounds(part){
@@ -152,33 +245,66 @@ function bounds(part){
 function updateTrimUI(){
  $('trimStartOut').textContent=trimStart.toFixed(2)+' s';
  $('trimEndOut').textContent=trimEnd.toFixed(2)+' s';
- $('trimLength').textContent='Zone sélectionnée : '+Math.max(0,trimEnd-trimStart).toFixed(2)+' s';
+ $('trimLength').textContent='Zone sélectionnée : '+Math.max(0,trimEnd-trimStart).toFixed(2)+' s · '+count+' parts de '+((trimEnd-trimStart)/count).toFixed(2)+' s';
  updateSelection();
+}
+async function seekMedia(audio, target, token){
+ if(Math.abs(audio.currentTime-target)<0.025 && !audio.seeking)return;
+ await new Promise(resolve=>{
+  let done=false;
+  const finish=()=>{if(done)return;done=true;audio.removeEventListener('seeked',finish);audio.removeEventListener('error',finish);clearTimeout(fallback);resolve()};
+  const fallback=setTimeout(finish,900);
+  audio.addEventListener('seeked',finish,{once:true});
+  audio.addEventListener('error',finish,{once:true});
+  try{audio.currentTime=target}catch(e){finish()}
+ });
+ return token===playbackToken;
 }
 async function playPart(part){
  if(!fileURL||!duration)return;
+ const token=(++playbackToken);
  try{
-  initAudio(); if(audioCtx.state==='suspended')await audioCtx.resume();
-  const v=voices.find(x=>x.audio.paused)||voices[0];
-  if(!v.audio.paused)stopVoice(v);
+  initAudio();
+  if(audioCtx.state==='suspended')await audioCtx.resume();
+  if(token!==playbackToken)return;
+  // Une seule voix active : jouer une nouvelle part coupe systématiquement la précédente.
+  voices.forEach(stopVoice);
+  const v=voices[0];
+  activeVoice=v;
   const {start,end}=bounds(part), rate=Number($('pitch').value)/100;
   const fade=Number($('fade').value)/1000;
-  v.audio.playbackRate=rate;v.audio.preservesPitch=false;
+  const volume=Number($('volume').value)/100;
+  v.audio.playbackRate=rate;
+  v.audio.preservesPitch=false;
   v.gain.gain.cancelScheduledValues(audioCtx.currentTime);
-  v.gain.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime);
-  v.audio.pause();
-  const seek=()=>{v.audio.removeEventListener('seeked',seek);startPlayback()};
-  const startPlayback=()=>{
-   const now=audioCtx.currentTime, realLength=(end-start)/rate;
-   if(fade>0&&realLength>fade){v.gain.gain.setValueAtTime(Number($('volume').value)/100,now+Math.max(0,realLength-fade));v.gain.gain.linearRampToValueAtTime(0,now+realLength)}
-   v.audio.play().then(()=>{
-    const sliceNode=svg.querySelector(`[data-part="${part}"]`);if(sliceNode)sliceNode.classList.add('playing');
-    v.timer=setTimeout(()=>{stopVoice(v);if(sliceNode)sliceNode.classList.remove('playing');v.gain.gain.cancelScheduledValues(audioCtx.currentTime);v.gain.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime)},Math.max(30,realLength*1000));
-   }).catch(e=>say('Lecture impossible : '+e.message));
+  v.gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+  const ok=await seekMedia(v.audio,start,token);
+  if(ok===false||token!==playbackToken)return;
+  if(fade>0 && (end-start)/rate>fade){
+   const now=audioCtx.currentTime, length=(end-start)/rate;
+   v.gain.gain.setValueAtTime(volume,now+Math.max(0,length-fade));
+   v.gain.gain.linearRampToValueAtTime(0,now+length);
+  }
+  const sliceNode=svg.querySelector(`[data-part="${part}"]`);
+  const finish=()=>{
+   if(token!==playbackToken)return;
+   v.audio.ontimeupdate=null;v.audio.onended=null;v.audio.pause();
+   try{v.audio.currentTime=start}catch(e){}
+   v.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+   v.gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+   if(sliceNode)sliceNode.classList.remove('playing');
+   activeVoice=null;
   };
-  if(Math.abs(v.audio.currentTime-start)>.015){v.audio.addEventListener('seeked',seek,{once:true});v.audio.currentTime=start;setTimeout(()=>{if(v.audio.paused&&v.audio.currentTime>=start-.05)startPlayback()},120)}
-  else startPlayback();
- }catch(e){say('Erreur audio : '+e.message)}
+  v.audio.ontimeupdate=()=>{
+   if(token===playbackToken && v.audio.currentTime>=end-0.025)finish();
+  };
+  v.audio.onended=finish;
+  await v.audio.play();
+  if(token!==playbackToken){v.audio.pause();return}
+  if(sliceNode)sliceNode.classList.add('playing');
+ }catch(e){
+  if(token===playbackToken)say('Lecture impossible : '+e.message);
+ }
 }
 function renderPizza(){
  svg.innerHTML='';
@@ -261,7 +387,7 @@ $('trimEnd').addEventListener('input',()=>{
 $('trimReset').addEventListener('click',()=>{
  trimStart=0;trimEnd=duration;$('trimStart').value=0;$('trimEnd').value=1000;updateTrimUI();
 });
-$('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder()});
+$('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder();updateTrimUI()});
 $('playSlice').addEventListener('click',()=>playPart(selected));
 $('stopAll').addEventListener('click',stopAll);
 $('volume').addEventListener('input',()=>{$('volOut').textContent=$('volume').value+'%';if(master)master.gain.setTargetAtTime(Number($('volume').value)/100,audioCtx.currentTime,.01)});
