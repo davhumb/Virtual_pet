@@ -51,6 +51,17 @@ input[type=range]{width:100%;accent-color:var(--red)}
 .status{font-size:12px;color:var(--green);min-height:18px;margin-top:8px}
 hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
+
+.wave-wrap{margin:14px 0 5px;background:linear-gradient(180deg,#111925,#151e2b);border:1px solid rgba(164,184,211,.2);border-radius:13px;padding:10px 10px 8px;box-shadow:inset 0 0 22px rgba(0,0,0,.25)}
+#waveform{display:block;width:100%;height:142px;touch-action:none;cursor:ew-resize}
+.wave-legend{display:flex;justify-content:space-between;gap:12px;margin-top:6px;color:#aebaca;font-size:11px;letter-spacing:.08em}
+.wave-legend span{display:flex;align-items:center;gap:6px}
+.wave-legend b{color:#f4f2e9;font-variant-numeric:tabular-nums;letter-spacing:0}
+.wave-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.in-dot{background:#ff795d}.out-dot{background:#f6d365}
+.wave-help{font-size:11px;color:#9eacbd;margin:7px 2px 2px}
+@media(max-width:560px){#waveform{height:124px}}
+
 </style>
 
 <style>
@@ -152,8 +163,11 @@ footer{color:#7f8b9b;letter-spacing:.04em}
 <section class="panel">
 <div class="row"><strong>01 / Trim du sample</strong><span class="tag">IN / OUT</span></div>
 <p class="note">Définis le point IN et le point OUT. Ensuite, 4 / 8 / 12 / 16 parts divisent toujours cette zone trimée à parts strictement égales — jamais le fichier entier.</p>
-<div class="range-row"><label for="trimStart">Début</label><output id="trimStartOut">0.00 s</output><input id="trimStart" type="range" min="0" max="1000" value="0" style="grid-column:1/-1"></div>
-<div class="range-row"><label for="trimEnd">Fin</label><output id="trimEndOut">—</output><input id="trimEnd" type="range" min="0" max="1000" value="1000" style="grid-column:1/-1"></div>
+<div class="wave-wrap" id="waveWrap">
+ <canvas id="waveform" aria-label="Forme d'onde du sample. Déplace les poignées IN et OUT pour ajuster le trim."></canvas>
+ <div class="wave-legend"><span><i class="in-dot"></i> IN <b id="trimStartOut">0.00 s</b></span><span><i class="out-dot"></i> OUT <b id="trimEndOut">—</b></span></div>
+</div>
+<p class="wave-help">Glisse les poignées verticales sur la forme d'onde pour choisir précisément le début et la fin.</p>
 <div class="controls"><button id="trimReset" disabled>↺ Tout le sample</button><button id="previewTrim" disabled>▶ Écouter le trim</button></div>
 <div class="stat" id="trimLength">Zone sélectionnée : —</div>
 </section>
@@ -201,6 +215,7 @@ footer{color:#7f8b9b;letter-spacing:.04em}
 const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
 let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
+let waveformPeaks=[], dragHandle=null;
 let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), seqStart=0;
 const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
 function say(s){$('status').textContent=s}
@@ -242,11 +257,90 @@ function bounds(part){
  const start=trimStart+span*part/count, end=trimStart+span*(part+1)/count;
  return {start,end};
 }
+function drawWaveform(){
+ const canvas=$('waveform'); if(!canvas)return;
+ const rect=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+ const w=Math.max(1,Math.floor(rect.width*dpr)), h=Math.max(1,Math.floor(rect.height*dpr));
+ if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+ const ctx=canvas.getContext('2d');ctx.clearRect(0,0,w,h);
+ const mid=h/2, pad=8*dpr, usable=h-2*pad;
+ // Subtle center line and waveform peaks. Audio is decoded only to draw this display;
+ // playback continues to use the original HTMLAudioElement source.
+ ctx.strokeStyle='rgba(190,207,225,.18)';ctx.lineWidth=1*dpr;
+ ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(w,mid);ctx.stroke();
+ const peaks=waveformPeaks;
+ if(peaks.length){
+  const step=w/peaks.length;
+  for(let i=0;i<peaks.length;i++){
+   const x=i*step, amp=Math.max(1*dpr,peaks[i]*usable*.48);
+   ctx.fillStyle=(i/peaks.length>=trimStart/duration&&i/peaks.length<=trimEnd/duration)
+    ?'rgba(112,215,232,.88)':'rgba(130,145,164,.25)';
+   ctx.fillRect(x,mid-amp,Math.max(1*dpr,step*.72),amp*2);
+  }
+ }else{
+  ctx.fillStyle='rgba(150,165,184,.5)';ctx.font=`${12*dpr}px system-ui`;
+  ctx.textAlign='center';ctx.fillText('Préparation de la forme d’onde…',w/2,mid+4*dpr);
+ }
+ // Dim the discarded regions.
+ const xIn=duration?trimStart/duration*w:0, xOut=duration?trimEnd/duration*w:w;
+ ctx.fillStyle='rgba(5,8,13,.60)';
+ ctx.fillRect(0,0,xIn,h);ctx.fillRect(xOut,0,w-xOut,h);
+ // Selection border and draggable handles.
+ ctx.strokeStyle='#f6d365';ctx.lineWidth=2*dpr;
+ ctx.strokeRect(xIn,1*dpr,Math.max(0,xOut-xIn),h-2*dpr);
+ [ [xIn,'#ff795d'],[xOut,'#f6d365'] ].forEach(([x,color])=>{
+  ctx.fillStyle=color;ctx.fillRect(x-1.5*dpr,0,3*dpr,h);
+  ctx.beginPath();ctx.arc(x,h/2,7*dpr,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x-5*dpr,mid);ctx.lineTo(x+5*dpr,mid);ctx.strokeStyle='#151a22';ctx.lineWidth=1.5*dpr;ctx.stroke();
+ });
+}
+async function buildWaveform(file){
+ waveformPeaks=[];drawWaveform();
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const temp=new AC();
+  const bytes=await file.arrayBuffer();
+  const decoded=await temp.decodeAudioData(bytes.slice(0));
+  const channels=[];
+  for(let c=0;c<decoded.numberOfChannels;c++)channels.push(decoded.getChannelData(c));
+  const bins=Math.min(1800,Math.max(500,Math.floor(decoded.duration*35)));
+  const block=Math.max(1,Math.floor(decoded.length/bins));
+  const peaks=new Array(bins).fill(0);
+  for(let i=0;i<bins;i++){
+   const from=i*block,to=Math.min(decoded.length,from+block);
+   let peak=0;
+   for(const data of channels)for(let j=from;j<to;j++)peak=Math.max(peak,Math.abs(data[j]));
+   peaks[i]=peak;
+  }
+  waveformPeaks=peaks;
+  await temp.close();
+  drawWaveform();
+ }catch(e){
+  say('Audio prêt. Forme d’onde indisponible sur ce fichier, trim toujours utilisable.');
+ }
+}
+function waveformPointerDown(e){
+ if(!duration)return;
+ const rect=$('waveform').getBoundingClientRect(), x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+ const t=x*duration, ds=Math.abs(t-trimStart), de=Math.abs(t-trimEnd);
+ dragHandle=ds<=de?'in':'out';
+ $('waveform').setPointerCapture(e.pointerId);
+ waveformPointerMove(e);
+}
+function waveformPointerMove(e){
+ if(!dragHandle||!duration)return;
+ const rect=$('waveform').getBoundingClientRect(), x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+ const t=x*duration, gap=Math.min(.03,duration/100);
+ if(dragHandle==='in')trimStart=Math.max(0,Math.min(t,trimEnd-gap));
+ else trimEnd=Math.min(duration,Math.max(t,trimStart+gap));
+ updateTrimUI();
+}
+function waveformPointerUp(){dragHandle=null}
 function updateTrimUI(){
  $('trimStartOut').textContent=trimStart.toFixed(2)+' s';
  $('trimEndOut').textContent=trimEnd.toFixed(2)+' s';
  $('trimLength').textContent='Zone sélectionnée : '+Math.max(0,trimEnd-trimStart).toFixed(2)+' s · '+count+' parts de '+((trimEnd-trimStart)/count).toFixed(2)+' s';
- updateSelection();
+ updateSelection();drawWaveform();
 }
 async function seekMedia(audio, target, token){
  if(Math.abs(audio.currentTime-target)<0.025 && !audio.seeking)return;
@@ -349,12 +443,11 @@ fileInput.addEventListener('change',()=>{
  preview.onloadedmetadata=()=>{
   duration=preview.duration;trimStart=0;trimEnd=duration;
   $('duration').textContent=duration.toFixed(1)+' s';
-  $('trimStart').value=0;$('trimEnd').value=1000;
   $('preview').disabled=false;$('stopPreview').disabled=false;
   $('trimReset').disabled=false;$('previewTrim').disabled=false;
   ['playSlice','stopAll','reverse','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
   try{initAudio();makeVoices();say('Prêt. La lecture utilise le fichier original, sans décodage PCM.')}catch(e){say(e.message)}
-  updateTrimUI();updateSelection();renderPizza();renderSteps();
+  updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);
  };
  preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
 });
@@ -370,22 +463,12 @@ function playTrimPreview(){
 $('preview').addEventListener('click',playTrimPreview);
 $('previewTrim').addEventListener('click',playTrimPreview);
 $('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=trimStart;preview.ontimeupdate=null});
-$('trimStart').addEventListener('input',()=>{
- const minGap=Math.min(.1,duration/100);
- trimStart=Math.min(Number($('trimStart').value)/1000*duration,trimEnd-minGap);
- if(trimStart<0)trimStart=0;
- $('trimStart').value=Math.round(trimStart/duration*1000);
- updateTrimUI();
-});
-$('trimEnd').addEventListener('input',()=>{
- const minGap=Math.min(.1,duration/100);
- trimEnd=Math.max(Number($('trimEnd').value)/1000*duration,trimStart+minGap);
- if(trimEnd>duration)trimEnd=duration;
- $('trimEnd').value=Math.round(trimEnd/duration*1000);
- updateTrimUI();
-});
+$('waveform').addEventListener('pointerdown',waveformPointerDown);
+$('waveform').addEventListener('pointermove',waveformPointerMove);
+$('waveform').addEventListener('pointerup',waveformPointerUp);
+$('waveform').addEventListener('pointercancel',waveformPointerUp);
 $('trimReset').addEventListener('click',()=>{
- trimStart=0;trimEnd=duration;$('trimStart').value=0;$('trimEnd').value=1000;updateTrimUI();
+ trimStart=0;trimEnd=duration;updateTrimUI();drawWaveform();
 });
 $('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder();updateTrimUI()});
 $('playSlice').addEventListener('click',()=>playPart(selected));
@@ -401,6 +484,7 @@ $('seqStop').addEventListener('click',()=>{stopSequence();stopAll()});
 $('clearSteps').addEventListener('click',()=>{stepPattern.fill(false);renderSteps()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&seqRunning){stopSequence();stopAll()}});
 resetOrder();
+window.addEventListener('resize',drawWaveform);
 })();
 </script>
 </body>
