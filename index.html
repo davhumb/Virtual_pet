@@ -289,7 +289,7 @@ input[type=range]{accent-color:#ff704b}
 
 <section class="panel">
 <div class="row"><strong>04 — Loop</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
-<div class="steps" id="steps"></div>
+<div class="steps" id="steps"></div><div class="tag" style="margin-top:8px">Double-clic sur un pas : y placer la part sélectionnée</div>
 <div class="controls">
 <button class="primary" id="seqPlay" disabled>▶ Play loop</button>
 <button id="seqStop" disabled>■ Stop</button>
@@ -305,7 +305,7 @@ const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
 let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
 let waveformPeaks=[], dragHandle=null, zoomLevel=1, viewStart=0, viewEnd=0;
-let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), seqStart=0;
+let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), stepSlices=Array.from({length:8},(_,i)=>i%8), seqStart=0;
 const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
 function say(s){$('status').textContent=s}
 function initAudio(){
@@ -637,16 +637,24 @@ function updateSelection(){
 }
 function renderSteps(){
  $('steps').innerHTML='';
- stepPattern.forEach((on,i)=>{const b=document.createElement('button');b.className='step'+(on?' on':'');b.textContent=order[i%count]+1;b.addEventListener('click',()=>{stepPattern[i]=!stepPattern[i];renderSteps()});$('steps').appendChild(b)});
+ stepPattern.forEach((on,i)=>{
+  const b=document.createElement('button');b.className='step'+(on?' on':'');
+  const part=stepSlices[i], label=order.indexOf(part)+1 || part+1;
+  b.textContent=String(label);
+  b.title=`Pas ${i+1} · part ${label} — double-clic : affecter la part sélectionnée`;
+  b.addEventListener('click',()=>{stepPattern[i]=!stepPattern[i];renderSteps()});
+  b.addEventListener('dblclick',e=>{e.preventDefault();stepSlices[i]=selected;stepPattern[i]=true;renderSteps()});
+  $('steps').appendChild(b);
+ });
 }
 function stopSequence(){if(seqTimer)clearInterval(seqTimer);seqTimer=null;seqRunning=false;$('seqPlay').textContent='▶ Lancer la séquence';document.querySelectorAll('.step').forEach(n=>n.classList.remove('current'))}
 function tickSequence(){
  const bpm=Math.max(40,Math.min(220,Number($('bpm').value)||90)), interval=60000/bpm;
  document.querySelectorAll('.step').forEach((n,i)=>n.classList.toggle('current',i===seqIndex));
- if(stepPattern[seqIndex])playPart(order[seqIndex%count]);
+ if(stepPattern[seqIndex])playPart(stepSlices[seqIndex]);
  seqIndex=(seqIndex+1)%8;
 }
-function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;renderPizza();updateSelection();renderSteps()}
+function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepSlices=Array.from({length:8},(_,i)=>order[i%count]);renderPizza();updateSelection();renderSteps()}
 fileInput.addEventListener('change',()=>{
  const f=fileInput.files&&fileInput.files[0];if(!f)return;
  if(!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return}
