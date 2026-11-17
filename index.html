@@ -76,12 +76,12 @@ body{
  linear-gradient(160deg,#0d1016,#121722 55%,#0b0e13);
  background-attachment:fixed;color:var(--ink)
 }
-header{padding:5px 2px 12px}
+header{padding:5px 2px 4px}
 .logo{font-size:12px;letter-spacing:.16em}
 .logo span{color:var(--red);text-shadow:0 0 14px var(--red)}
 .tag{background:rgba(255,255,255,.035);border-color:var(--line);color:#c1cbd7;letter-spacing:.1em;text-transform:uppercase}
-h1{font-size:clamp(34px,9vw,54px);letter-spacing:-.065em;line-height:.94;text-shadow:0 5px 30px rgba(0,0,0,.3)}
-.sub{font-size:14px;color:#b7c0cd;max-width:440px}
+h1{font-size:clamp(30px,8vw,44px);letter-spacing:-.065em;line-height:.94;text-shadow:0 5px 30px rgba(0,0,0,.3);margin:8px 0 12px}
+.sub{display:none}
 .panel{
  position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(31,39,53,.94),rgba(19,24,34,.94));
  border:1px solid var(--line);border-radius:19px;padding:17px;margin:14px 0;
@@ -113,20 +113,20 @@ select{padding:8px 11px}
 input[type=range]{accent-color:var(--red);height:24px;cursor:pointer}
 .pizza-wrap{gap:12px}
 #pizza{filter:drop-shadow(0 12px 22px rgba(0,0,0,.42));overflow:visible}
-.slice{stroke:#151a22;stroke-width:3;transition:filter .18s,stroke-width .18s,opacity .18s;filter:drop-shadow(0 3px 3px rgba(0,0,0,.22))}
-.slice:hover{filter:brightness(1.16) drop-shadow(0 0 8px rgba(112,215,232,.28))}
-.slice.selected{stroke:#fff0a6;stroke-width:7;filter:brightness(1.15) drop-shadow(0 0 11px rgba(246,211,101,.6))}
-.slice.playing{stroke:var(--green);stroke-width:8;filter:brightness(1.2) drop-shadow(0 0 14px rgba(169,239,180,.7))}
-.slice-label{fill:#17202a;font-size:13px;font-weight:950;paint-order:stroke;stroke:rgba(255,255,255,.18);stroke-width:.5px}
+.slice{stroke:#9b5a2d;stroke-width:2.5;transition:filter .18s,stroke-width .18s,opacity .18s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.22))}
+.slice:hover{filter:brightness(1.12) drop-shadow(0 0 8px rgba(255,220,130,.35))}
+.slice.selected{stroke:#fff0a6;stroke-width:6;filter:brightness(1.12) drop-shadow(0 0 11px rgba(246,211,101,.6))}
+.slice.playing{stroke:var(--green);stroke-width:7;filter:brightness(1.2) drop-shadow(0 0 14px rgba(169,239,180,.7))}
+.slice-label{fill:#5b2d20;font-size:13px;font-weight:950;paint-order:stroke;stroke:rgba(255,244,205,.65);stroke-width:1.6px}
 .pizza-side .box{background:linear-gradient(145deg,rgba(112,215,232,.09),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:13px;padding:13px}
 .big{font-size:27px;letter-spacing:-.04em;color:var(--yellow)}
 .stat{color:#b6c2d0}
 .steps{gap:7px}
 .step{border-radius:9px;padding:12px 0;background:#202a39}
 .step.current{outline:2px solid var(--cyan);box-shadow:0 0 13px rgba(112,215,232,.3)}
-.note{color:#aab6c5}
-.status{color:var(--green);font-weight:650}
-footer{color:#7f8b9b;letter-spacing:.04em}
+.note{display:none}
+.status{display:none}
+footer{display:none}
 @media(max-width:560px){
  body{padding:14px 11px 28px}
  .panel{padding:14px;border-radius:16px}
@@ -144,71 +144,69 @@ footer{color:#7f8b9b;letter-spacing:.04em}
 </head>
 <body>
 <main>
-<header><div class="logo">CELLULOID <span>●</span> CIRCLES</div><div class="tag">PIZZA LAB / SOLO MODULE</div></header>
-<h1>Slice it.<br>Flip the loop.</h1>
-<p class="sub">Un sample, découpé en parts. Chaque part devient un petit instrument.</p>
+<header><div class="logo">CELLULOID <span>●</span> CIRCLES</div><div class="tag">PIZZA LAB</div></header>
+<h1>Pizza Lab</h1>
 
 <section class="panel">
-<label class="upload" for="file"><div><strong>＋ Importer un sample</strong><small>MP3, WAV, OGG — privilégie un fichier audio local</small></div></label>
+<label class="upload" for="file"><div><strong>＋ Importer un sample</strong><small>MP3 · WAV · OGG</small></div></label>
 <input id="file" type="file" accept="audio/*">
 <div class="fileline"><span id="filename">Aucun sample chargé</span><span id="duration">—</span></div>
 <div class="controls" style="margin-top:12px">
-<button id="preview" disabled>▶ Écouter l'original</button>
+<button id="preview" disabled>▶ Original</button>
 <button id="stopPreview" disabled>■ Stop</button>
 </div>
 <audio id="previewAudio" preload="metadata" style="display:none"></audio>
-<div class="status" id="status">En attente d'un sample.</div>
+<div class="status" id="status"></div>
 </section>
 
 <section class="panel">
-<div class="row"><strong>01 / Trim du sample</strong><span class="tag">IN / OUT</span></div>
-<p class="note">Définis le point IN et le point OUT. Ensuite, 4 / 8 / 12 / 16 parts divisent toujours cette zone trimée à parts strictement égales — jamais le fichier entier.</p>
+<div class="row"><strong>Trim</strong><span class="tag">IN / OUT</span></div>
 <div class="wave-wrap" id="waveWrap">
  <canvas id="waveform" aria-label="Forme d'onde du sample. Déplace les poignées IN et OUT pour ajuster le trim."></canvas>
  <div class="wave-legend"><span><i class="in-dot"></i> IN <b id="trimStartOut">0.00 s</b></span><span><i class="out-dot"></i> OUT <b id="trimEndOut">—</b></span></div>
 </div>
 <p class="wave-help">Glisse les poignées verticales sur la forme d'onde pour choisir précisément le début et la fin.</p>
-<div class="controls"><button id="trimReset" disabled>↺ Tout le sample</button><button id="previewTrim" disabled>▶ Écouter le trim</button></div>
+<div class="controls"><button id="trimReset" disabled>↺ Reset</button><button id="previewTrim" disabled>▶ Trim</button></div>
 <div class="stat" id="trimLength">Zone sélectionnée : —</div>
 </section>
 
 <section class="panel">
-<div class="row"><strong>02 / Découpe</strong><div class="controls"><label for="count">Parts</label><select id="count"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></div></div>
+<div class="row"><strong>Pizza</strong><div class="controls"><label for="count">Slices</label><select id="count"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></div></div>
 <div class="pizza-wrap">
 <svg id="pizza" viewBox="0 0 400 400" role="group" aria-label="Découpe circulaire du sample"></svg>
 <div class="pizza-side">
-<div class="box"><label>PART SÉLECTIONNÉE</label><div class="big" id="selectedName">—</div><div class="stat" id="selectedTime">Charge un sample</div></div>
-<button class="primary" id="playSlice" disabled>▶ Jouer cette part</button>
-<button id="stopAll" disabled>■ Stop tous</button>
-<div class="hint note">Tape une part pour la sélectionner. Une seule part joue à la fois : lancer une nouvelle part coupe immédiatement la précédente.</div>
+<div class="box"><label>SLICE</label><div class="big" id="selectedName">—</div><div class="stat" id="selectedTime">Charge un sample</div></div>
+<button class="primary" id="playSlice" disabled>▶ Play</button>
+<button id="stopAll" disabled>■ Stop</button>
+
 </div>
 </div>
 </section>
 
 <section class="panel">
-<div class="row"><strong>03 / Manipulation</strong><span class="tag">LIVE</span></div>
+<div class="row"><strong>FX</strong><span class="tag">LIVE</span></div>
 <div class="range-row"><label for="volume">Volume</label><output id="volOut">85%</output><input id="volume" type="range" min="0" max="100" value="85" style="grid-column:1/-1"></div>
-<div class="range-row"><label for="pitch">Vitesse / pitch</label><output id="pitchOut">1.00×</output><input id="pitch" type="range" min="50" max="150" value="100" style="grid-column:1/-1"></div>
-<div class="range-row"><label for="fade">Fade de sortie</label><output id="fadeOut">10 ms</output><input id="fade" type="range" min="0" max="250" value="10" style="grid-column:1/-1"></div>
+<div class="range-row"><label for="pitch">Pitch</label><output id="pitchOut">1.00×</output><input id="pitch" type="range" min="50" max="150" value="100" style="grid-column:1/-1"></div>
+<div class="range-row"><label for="fade">Fade</label><output id="fadeOut">10 ms</output><input id="fade" type="range" min="0" max="250" value="10" style="grid-column:1/-1"></div>
 <div class="controls">
-<button id="reverse" disabled>↶ Ordre inverse</button>
-<button id="shuffle" disabled>⤨ Mélanger</button>
-<button id="reset" disabled>Réinitialiser</button>
+<button id="reverse" disabled>↶ Reverse</button>
+<button id="shuffle" disabled>⤨ Shuffle</button>
+<button id="reset" disabled>Reset</button>
 </div>
-<p class="note">L'ordre des parts est modifié visuellement et dans le séquenceur. Une seule voix audio est active à la fois pour éviter les superpositions involontaires. Le fichier original reste la source de lecture : aucune conversion PCM/WAV.</p>
+
 </section>
 
 <section class="panel">
-<div class="row"><strong>04 / Séquenceur simple</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
+<div class="row"><strong>Loop</strong><div class="controls"><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="220" value="90" style="width:66px;background:#2b2b25;color:#f1eedf;border:1px solid #45443a;border-radius:8px;padding:8px"></div></div>
 <div class="steps" id="steps"></div>
 <div class="controls">
-<button class="primary" id="seqPlay" disabled>▶ Lancer la séquence</button>
-<button id="seqStop" disabled>■ Stop séquence</button>
-<button id="clearSteps" disabled>Effacer</button>
+<button class="primary" id="seqPlay" disabled>▶ Play loop</button>
+<button id="seqStop" disabled>■ Stop</button>
+<button id="clearSteps" disabled>Clear</button>
 </div>
-<p class="note">Active les cases pour programmer les parts. Une case = une noire. Le séquenceur boucle sur 8 pas.</p>
+
 </section>
-<footer>Pizza Lab — prototype autonome. Les découpes sont lues depuis le média original.</footer>
+
 </main>
 <script>
 (() => {
@@ -379,7 +377,7 @@ async function playPart(part){
    v.gain.gain.setValueAtTime(volume,now+Math.max(0,length-fade));
    v.gain.gain.linearRampToValueAtTime(0,now+length);
   }
-  const sliceNode=svg.querySelector(`[data-part="${part}"]`);
+  const sliceNode=svg.querySelector(`.slice[data-part="${part}"]`);
   const finish=()=>{
    if(token!==playbackToken)return;
    v.audio.ontimeupdate=null;v.audio.onended=null;v.audio.pause();
@@ -402,21 +400,100 @@ async function playPart(part){
 }
 function renderPizza(){
  svg.innerHTML='';
- const cx=200,cy=200,r=174;
+ const ns='http://www.w3.org/2000/svg', cx=200,cy=200,r=174;
+ const defs=document.createElementNS(ns,'defs');
+ defs.innerHTML=`
+  <radialGradient id="cheese" cx="45%" cy="38%" r="70%">
+   <stop offset="0%" stop-color="#ffe89a"/><stop offset="72%" stop-color="#f4c85f"/><stop offset="100%" stop-color="#d9953d"/>
+  </radialGradient>
+  <linearGradient id="crust" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0%" stop-color="#f4c17a"/><stop offset="55%" stop-color="#bd7138"/><stop offset="100%" stop-color="#8e4928"/>
+  </linearGradient>
+  <radialGradient id="pepperoni">
+   <stop offset="0%" stop-color="#d85b42"/><stop offset="75%" stop-color="#a92e2c"/><stop offset="100%" stop-color="#702126"/>
+  </radialGradient>
+  <filter id="pizzaShadow" x="-20%" y="-20%" width="140%" height="140%">
+   <feGaussianBlur stdDeviation="3"/>
+  </filter>`;
+ svg.appendChild(defs);
+
+ // Pizza shadow and whole crust ring.
+ const shadow=document.createElementNS(ns,'circle');
+ shadow.setAttribute('cx',cx);shadow.setAttribute('cy',cy+5);shadow.setAttribute('r',r+3);
+ shadow.setAttribute('fill','#000');shadow.setAttribute('opacity','.45');shadow.setAttribute('filter','url(#pizzaShadow)');
+ svg.appendChild(shadow);
+ const crustBase=document.createElementNS(ns,'circle');
+ crustBase.setAttribute('cx',cx);crustBase.setAttribute('cy',cy);crustBase.setAttribute('r',r);
+ crustBase.setAttribute('fill','url(#crust)');crustBase.setAttribute('stroke','#713b25');crustBase.setAttribute('stroke-width','3');
+ svg.appendChild(crustBase);
+
+ // Each slice is a clickable wedge with its own toppings.
  for(let i=0;i<count;i++){
   const a0=(-Math.PI/2)+(i/count)*Math.PI*2, a1=(-Math.PI/2)+((i+1)/count)*Math.PI*2;
-  const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+  const x0=cx+(r-13)*Math.cos(a0),y0=cy+(r-13)*Math.sin(a0);
+  const x1=cx+(r-13)*Math.cos(a1),y1=cy+(r-13)*Math.sin(a1);
   const large=(a1-a0)>Math.PI?1:0;
-  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  path.setAttribute('d',`M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`);
-  path.setAttribute('fill',colors[order.indexOf(i)%colors.length]||colors[i%colors.length]);
-  path.setAttribute('class','slice'+(i===selected?' selected':''));path.dataset.part=i;
-  path.addEventListener('click',()=>{selected=i;renderPizza();updateSelection()});svg.appendChild(path);
-  const mid=(a0+a1)/2, rr=112, tx=cx+rr*Math.cos(mid),ty=cy+rr*Math.sin(mid);
-  const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('x',tx);text.setAttribute('y',ty);text.setAttribute('class','slice-label');text.textContent=String(order.indexOf(i)+1);svg.appendChild(text);
+  const group=document.createElementNS(ns,'g');
+  group.setAttribute('class','pizza-slice');
+  group.dataset.part=i;
+  const path=document.createElementNS(ns,'path');
+  path.setAttribute('d',`M ${cx} ${cy} L ${x0} ${y0} A ${r-13} ${r-13} 0 ${large} 1 ${x1} ${y1} Z`);
+  path.setAttribute('fill','url(#cheese)');
+  path.setAttribute('stroke','#9b5a2d');
+  path.setAttribute('stroke-width','2.5');
+  path.setAttribute('class','slice'+(i===selected?' selected':''));
+  path.dataset.part=i;
+  path.addEventListener('click',()=>{selected=i;renderPizza();updateSelection()});
+  group.appendChild(path);
+
+  const mid=(a0+a1)/2;
+  // Toppings are placed in the interior of each wedge, avoiding the crust.
+  const spread=Math.max(.08,(a1-a0)*.23);
+  const toppingCount=count<=4?5:count<=8?3:2;
+  for(let k=0;k<toppingCount;k++){
+   const frac=(k+1)/(toppingCount+1);
+   const angle=a0+(a1-a0)*(.28+.44*frac);
+   const rr=52+((i*19+k*31)%62);
+   const tx=cx+rr*Math.cos(angle),ty=cy+rr*Math.sin(angle);
+   const pepper=document.createElementNS(ns,'circle');
+   pepper.setAttribute('cx',tx);pepper.setAttribute('cy',ty);
+   pepper.setAttribute('r',count>=12?5.2:7.2);
+   pepper.setAttribute('fill','url(#pepperoni)');
+   pepper.setAttribute('stroke','#7c3028');pepper.setAttribute('stroke-width','1.1');
+   pepper.setAttribute('pointer-events','none');
+   group.appendChild(pepper);
+   const glint=document.createElementNS(ns,'circle');
+   glint.setAttribute('cx',tx-2);glint.setAttribute('cy',ty-2);
+   glint.setAttribute('r',1.7);glint.setAttribute('fill','#f6a078');glint.setAttribute('opacity','.75');
+   glint.setAttribute('pointer-events','none');group.appendChild(glint);
+  }
+  // A few tiny herb flecks.
+  for(let k=0;k<3;k++){
+   const angle=a0+(a1-a0)*(.2+.3*k), rr=85+((i*13+k*17)%28);
+   const herb=document.createElementNS(ns,'ellipse');
+   herb.setAttribute('cx',cx+rr*Math.cos(angle));herb.setAttribute('cy',cy+rr*Math.sin(angle));
+   herb.setAttribute('rx','2.4');herb.setAttribute('ry','1.2');
+   herb.setAttribute('transform',`rotate(${(i*37+k*53)%180} ${herb.getAttribute('cx')} ${herb.getAttribute('cy')})`);
+   herb.setAttribute('fill','#57733d');herb.setAttribute('pointer-events','none');group.appendChild(herb);
+  }
+  // Number on each slice.
+  const labelR=116, tx=cx+labelR*Math.cos(mid),ty=cy+labelR*Math.sin(mid);
+  const text=document.createElementNS(ns,'text');
+  text.setAttribute('x',tx);text.setAttribute('y',ty);text.setAttribute('class','slice-label');
+  text.textContent=String(order.indexOf(i)+1);text.setAttribute('pointer-events','none');
+  group.appendChild(text);
+  svg.appendChild(group);
  }
- const center=document.createElementNS('http://www.w3.org/2000/svg','circle');center.setAttribute('cx',cx);center.setAttribute('cy',cy);center.setAttribute('r',35);center.setAttribute('fill','#171714');center.setAttribute('stroke','#45443a');center.setAttribute('stroke-width','3');svg.appendChild(center);
- const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',cx);label.setAttribute('y',cy+4);label.setAttribute('fill','#f1eedf');label.setAttribute('font-size','11');label.setAttribute('font-weight','900');label.setAttribute('text-anchor','middle');label.textContent='SAMPLE';svg.appendChild(label);
+
+ // Center label styled like a small pizza badge.
+ const center=document.createElementNS(ns,'circle');
+ center.setAttribute('cx',cx);center.setAttribute('cy',cy);center.setAttribute('r',28);
+ center.setAttribute('fill','#9f4c2e');center.setAttribute('stroke','#f4c17a');center.setAttribute('stroke-width','4');
+ svg.appendChild(center);
+ const label=document.createElementNS(ns,'text');
+ label.setAttribute('x',cx);label.setAttribute('y',cy+4);label.setAttribute('fill','#fff0c5');
+ label.setAttribute('font-size','10');label.setAttribute('font-weight','950');
+ label.setAttribute('text-anchor','middle');label.textContent='CC';svg.appendChild(label);
 }
 function updateSelection(){
  $('selectedName').textContent='PART '+String(order.indexOf(selected)+1).padStart(2,'0');
