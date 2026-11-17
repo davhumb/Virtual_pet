@@ -54,6 +54,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;margin-top:22px}
 
 .wave-wrap{margin:14px 0 5px;background:linear-gradient(180deg,#111925,#151e2b);border:1px solid rgba(164,184,211,.2);border-radius:13px;padding:10px 10px 8px;box-shadow:inset 0 0 22px rgba(0,0,0,.25)}
 #waveform{display:block;width:100%;height:142px;touch-action:none;cursor:ew-resize}
+.wave-zoom{display:flex;align-items:center;gap:6px;margin:0 0 8px}.wave-zoom button{padding:5px 11px;min-width:36px}.wave-zoom span{font-size:11px;color:#aebaca;margin-left:auto;font-variant-numeric:tabular-nums}
 .wave-legend{display:flex;justify-content:space-between;gap:12px;margin-top:6px;color:#aebaca;font-size:11px;letter-spacing:.08em}
 .wave-legend span{display:flex;align-items:center;gap:6px}
 .wave-legend b{color:#f4f2e9;font-variant-numeric:tabular-nums;letter-spacing:0}
@@ -251,6 +252,7 @@ input[type=range]{accent-color:#ff704b}
 <section class="panel">
 <div class="row"><strong>01 — Trim</strong><span class="tag">IN / OUT</span></div>
 <div class="wave-wrap" id="waveWrap">
+ <div class="wave-zoom"><button id="zoomOut" type="button" disabled>−</button><button id="zoomIn" type="button" disabled>＋</button><button id="zoomFit" type="button" disabled>Tout</button><span id="zoomLabel">100 %</span></div>
  <canvas id="waveform" aria-label="Forme d'onde du sample. Déplace les poignées IN et OUT pour ajuster le trim."></canvas>
  <div class="wave-legend"><span><i class="in-dot"></i> IN <b id="trimStartOut">0.00 s</b></span><span><i class="out-dot"></i> OUT <b id="trimEndOut">—</b></span></div>
 </div>
@@ -302,7 +304,7 @@ input[type=range]{accent-color:#ff704b}
 const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
 let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
-let waveformPeaks=[], dragHandle=null;
+let waveformPeaks=[], dragHandle=null, zoomLevel=1, viewStart=0, viewEnd=0;
 let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(8).fill(false), seqStart=0;
 const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
 function say(s){$('status').textContent=s}
@@ -356,22 +358,24 @@ function drawWaveform(){
  ctx.strokeStyle='rgba(190,207,225,.18)';ctx.lineWidth=1*dpr;
  ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(w,mid);ctx.stroke();
  const peaks=waveformPeaks;
+ const vs=duration?viewStart:0, ve=duration?(viewEnd||duration):1, span=Math.max(.0001,ve-vs);
  if(peaks.length){
   const step=w/peaks.length;
-  for(let i=0;i<peaks.length;i++){
-   const x=i*step, amp=Math.max(1*dpr,peaks[i]*usable*.48);
-   ctx.fillStyle=(i/peaks.length>=trimStart/duration&&i/peaks.length<=trimEnd/duration)
-    ?'rgba(112,215,232,.88)':'rgba(130,145,164,.25)';
-   ctx.fillRect(x,mid-amp,Math.max(1*dpr,step*.72),amp*2);
+  const first=Math.max(0,Math.floor(vs/duration*peaks.length));
+  const last=Math.min(peaks.length-1,Math.ceil(ve/duration*peaks.length));
+  for(let i=first;i<=last;i++){
+   const t=(i+.5)/peaks.length*duration, x=(t-vs)/span*w, amp=Math.max(1*dpr,peaks[i]*usable*.48);
+   ctx.fillStyle=(t>=trimStart&&t<=trimEnd)?'rgba(112,215,232,.92)':'rgba(130,145,164,.28)';
+   ctx.fillRect(x,mid-amp,Math.max(1*dpr,step*.72*zoomLevel),amp*2);
   }
  }else{
   ctx.fillStyle='rgba(150,165,184,.5)';ctx.font=`${12*dpr}px system-ui`;
   ctx.textAlign='center';ctx.fillText('Préparation de la forme d’onde…',w/2,mid+4*dpr);
  }
  // Dim the discarded regions.
- const xIn=duration?trimStart/duration*w:0, xOut=duration?trimEnd/duration*w:w;
+ const xIn=duration?(trimStart-viewStart)/Math.max(.0001,viewEnd-viewStart)*w:0, xOut=duration?(trimEnd-viewStart)/Math.max(.0001,viewEnd-viewStart)*w:w;
  ctx.fillStyle='rgba(5,8,13,.60)';
- ctx.fillRect(0,0,xIn,h);ctx.fillRect(xOut,0,w-xOut,h);
+ ctx.fillRect(0,0,Math.max(0,xIn),h);ctx.fillRect(Math.max(0,xOut),0,Math.max(0,w-xOut),h);
  // Selection border and draggable handles.
  ctx.strokeStyle='#f6d365';ctx.lineWidth=2*dpr;
  ctx.strokeRect(xIn,1*dpr,Math.max(0,xOut-xIn),h-2*dpr);
@@ -409,7 +413,7 @@ async function buildWaveform(file){
 function waveformPointerDown(e){
  if(!duration)return;
  const rect=$('waveform').getBoundingClientRect(), x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
- const t=x*duration, ds=Math.abs(t-trimStart), de=Math.abs(t-trimEnd);
+ const t=viewStart+x*(viewEnd-viewStart), ds=Math.abs(t-trimStart), de=Math.abs(t-trimEnd);
  dragHandle=ds<=de?'in':'out';
  $('waveform').setPointerCapture(e.pointerId);
  waveformPointerMove(e);
@@ -417,15 +421,24 @@ function waveformPointerDown(e){
 function waveformPointerMove(e){
  if(!dragHandle||!duration)return;
  const rect=$('waveform').getBoundingClientRect(), x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
- const t=x*duration, gap=Math.min(.03,duration/100);
+ const t=viewStart+x*(viewEnd-viewStart), gap=Math.min(.003,duration/1000);
  if(dragHandle==='in')trimStart=Math.max(0,Math.min(t,trimEnd-gap));
  else trimEnd=Math.min(duration,Math.max(t,trimStart+gap));
  updateTrimUI();
 }
 function waveformPointerUp(){dragHandle=null}
+function setZoom(level){
+ if(!duration)return;
+ zoomLevel=Math.max(1,Math.min(32,level));
+ const span=duration/zoomLevel, center=(trimStart+trimEnd)/2;
+ viewStart=Math.max(0,Math.min(duration-span,center-span/2)); viewEnd=viewStart+span;
+ $('zoomLabel').textContent=Math.round(zoomLevel*100)+' %';
+ $('zoomIn').disabled=zoomLevel>=32; $('zoomOut').disabled=zoomLevel<=1;
+ drawWaveform();
+}
 function updateTrimUI(){
- $('trimStartOut').textContent=trimStart.toFixed(2)+' s';
- $('trimEndOut').textContent=trimEnd.toFixed(2)+' s';
+ $('trimStartOut').textContent=trimStart.toFixed(3)+' s';
+ $('trimEndOut').textContent=trimEnd.toFixed(3)+' s';
  $('trimLength').textContent=Math.max(0,trimEnd-trimStart).toFixed(2)+' s · '+count+' parts de '+((trimEnd-trimStart)/count).toFixed(2)+' s';
  updateSelection();drawWaveform();
 }
@@ -641,7 +654,7 @@ fileInput.addEventListener('change',()=>{
  fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
  $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
  preview.onloadedmetadata=()=>{
-  duration=preview.duration;trimStart=0;trimEnd=duration;
+  duration=preview.duration;trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;['zoomIn','zoomOut','zoomFit'].forEach(id=>$(id).disabled=false);$('zoomLabel').textContent='100 %';
   $('duration').textContent=duration.toFixed(1)+' s';
   $('preview').disabled=false;$('stopPreview').disabled=false;
   $('trimReset').disabled=false;$('previewTrim').disabled=false;
@@ -663,12 +676,15 @@ function playTrimPreview(){
 $('preview').addEventListener('click',playTrimPreview);
 $('previewTrim').addEventListener('click',playTrimPreview);
 $('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=trimStart;preview.ontimeupdate=null});
+$('zoomIn').addEventListener('click',()=>setZoom(zoomLevel*2));
+$('zoomOut').addEventListener('click',()=>setZoom(zoomLevel/2));
+$('zoomFit').addEventListener('click',()=>setZoom(1));
 $('waveform').addEventListener('pointerdown',waveformPointerDown);
 $('waveform').addEventListener('pointermove',waveformPointerMove);
 $('waveform').addEventListener('pointerup',waveformPointerUp);
 $('waveform').addEventListener('pointercancel',waveformPointerUp);
 $('trimReset').addEventListener('click',()=>{
- trimStart=0;trimEnd=duration;updateTrimUI();drawWaveform();
+ trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;setZoom(1);updateTrimUI();drawWaveform();
 });
 $('count').addEventListener('change',()=>{count=Number($('count').value);resetOrder();updateTrimUI()});
 $('playSlice').addEventListener('click',()=>playPart(selected));
