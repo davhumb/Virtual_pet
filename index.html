@@ -712,12 +712,22 @@ function stopSequence(){if(seqTimer)clearTimeout(seqTimer);seqTimer=null;seqRunn
 function tickSequence(){
  if(!seqRunning)return;
  const bpm=Math.max(40,Math.min(220,Number($('bpm').value)||90));
- document.querySelectorAll('.step').forEach((n,i)=>n.classList.toggle('current',i===seqIndex));
- if(stepPattern[seqIndex]){const p=stepSlices[seqIndex];playPart(p,stepVelocity[seqIndex]);}
+ const currentStep=seqIndex;
+ document.querySelectorAll('.step').forEach((n,i)=>n.classList.toggle('current',i===currentStep));
  const swing=Number($('swing').value)||0;
- const base=60000/bpm/4;
- const delay=base*(seqIndex%2===1 ? 1+swing/100 : 1-swing/100);
- seqIndex=(seqIndex+1)%count;
+ const beatDelay=(60000/bpm/4)*(currentStep%2===1 ? 1+swing/100 : 1-swing/100);
+ let delay=beatDelay;
+ if(stepPattern[currentStep]){
+  const part=stepSlices[currentStep];
+  const partBounds=bounds(part);
+  const playbackRate=Math.max(.01,sliceFX[part]?.pitch/100||1);
+  // Never advance to the next sequencer step before the current slice has
+  // reached its own end. The small safety margin compensates for media timeupdate cadence.
+  const fullSliceMs=Math.max(0,(partBounds.end-partBounds.start)/playbackRate*1000);
+  delay=Math.max(beatDelay,fullSliceMs+320);
+  playPart(part,stepVelocity[currentStep]);
+ }
+ seqIndex=(currentStep+1)%count;
  seqTimer=setTimeout(tickSequence,Math.max(10,delay));
 }
 function syncCuts(){
