@@ -230,8 +230,24 @@ input[type=range]{accent-color:#ff704b}
  .pizza-side button{min-height:45px}
 }
 @media(prefers-reduced-motion:reduce){.slice.playing{animation:none}}
+</style>
 
-.sample-candidates{display:grid;gap:7px;margin-top:12px}.sample-candidate{display:flex;align-items:center;gap:8px;padding:9px;background:#292820;border:1px solid #514737;border-radius:9px;min-width:0}.sample-candidate .sample-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.sample-candidate button{padding:7px 10px;font-size:11px}.sample-candidate button.choose{border-color:#d9b85c;color:#ffe6a0}
+
+<style>
+.browser-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;color:var(--muted);font-size:11px}
+.browser-upload{display:inline-flex;align-items:center;padding:8px 11px;border:1px solid rgba(255,200,90,.25);border-radius:10px;background:rgba(255,200,90,.06);color:#f4d69b;cursor:pointer;font-size:12px}
+#batchFile{display:none}
+.sample-browser{display:grid;gap:7px;margin-top:8px}
+.sample-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;align-items:center;padding:9px 10px;border:1px solid rgba(255,218,166,.12);border-radius:11px;background:rgba(0,0,0,.16)}
+.sample-meta{min-width:0}.sample-name{font-size:12px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sample-duration{font-size:10px;color:var(--muted);margin-top:2px}
+.sample-item button{padding:7px 9px;font-size:11px;white-space:nowrap}.sample-item .choose-sample{background:linear-gradient(135deg,#ff7448,#d94429);color:#1c100b;border-color:#ff9567}
+.sample-item.current{border-color:rgba(255,200,90,.55);box-shadow:inset 0 0 0 1px rgba(255,200,90,.15)}
+.smart-box{margin:12px 0 10px;padding:12px;border:1px solid rgba(255,200,90,.22);border-radius:14px;background:linear-gradient(130deg,rgba(240,91,54,.09),rgba(255,200,90,.045))}
+.smart-box>.row strong{font-size:11px;letter-spacing:.16em;color:#ffd28a}
+.smart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:9px 0 2px}.smart-controls label{font-size:11px}.smart-controls output{color:#ffd16a;font-size:11px;font-weight:800}.smart-controls select{padding:6px 8px;font-size:11px}.smart-controls label[for=sensitivity]{margin-left:auto}
+#sensitivity{height:18px;margin:0 0 8px}
+.smart-button{width:100%;background:linear-gradient(135deg,#f7c45d,#e69a3d);border-color:#ffdc8b;color:#26170d;font-weight:900}
+@media(max-width:420px){.sample-item{grid-template-columns:minmax(0,1fr) auto}.sample-item .choose-sample{grid-column:2;grid-row:1}.sample-item .preview-sample{grid-column:2;grid-row:2}.sample-meta{grid-row:1/3}.smart-controls label[for=sensitivity]{margin-left:0}}
 </style>
 
 </head>
@@ -242,8 +258,9 @@ input[type=range]{accent-color:#ff704b}
 
 <section class="panel">
 <label class="upload" for="file"><div><strong>＋ Importer un sample</strong><small>MP3 · WAV · OGG</small></div></label>
-<input id="file" type="file" accept="audio/*" multiple>
-<div id="sampleCandidates" class="sample-candidates" hidden></div>
+<input id="file" type="file" accept="audio/*">
+<div class="browser-head"><label class="browser-upload" for="batchFile">＋ Ajouter plusieurs samples</label><input id="batchFile" type="file" accept="audio/*" multiple><span id="browserCount">0 sample</span></div>
+<div id="sampleBrowser" class="sample-browser"></div>
 <div class="fileline"><span id="filename">Aucun sample chargé</span><span id="duration">—</span></div>
 <div class="controls" style="margin-top:12px">
 <button id="preview" disabled>▶ Original</button>
@@ -261,7 +278,13 @@ input[type=range]{accent-color:#ff704b}
  <div class="wave-legend"><span><i class="in-dot"></i> IN <b id="trimStartOut">0.00 s</b></span><span><i class="out-dot"></i> OUT <b id="trimEndOut">—</b></span></div>
 </div>
 <p class="wave-help" id="waveHelp">Les repères jaunes montrent les coupes régulières. Zoome puis glisse la forme d’onde pour te déplacer.</p>
-<div class="controls" style="flex-wrap:wrap"><button id="smartChop" disabled>✦ Smart chop</button><button id="freeChop" disabled>✂ Chop libre</button><button id="undoCut" disabled>↶ Annuler coupe</button><button id="resetCuts" disabled>↺ Coupes égales</button><button id="trimReset" disabled>↺ Reset trim</button><button id="previewTrim" disabled>▶ Trim</button></div>
+<div class="smart-box">
+ <div class="row"><strong>SMART CHOPPER</strong><span class="tag" id="smartState">ANALYSE TRANSITOIRES</span></div>
+ <div class="smart-controls"><label for="smartMode">Mode</label><select id="smartMode"><option value="drums">Drums</option><option value="sample" selected>Sample</option><option value="vocal">Vocal</option></select><label for="sensitivity">Sensibilité</label><output id="sensitivityOut">55%</output></div>
+ <input id="sensitivity" type="range" min="1" max="100" value="55">
+ <button id="smartChop" class="smart-button" disabled>✦ Détecter les transitoires</button>
+</div>
+<div class="controls" style="flex-wrap:wrap"><button id="freeChop" disabled>✂ Chop libre</button><button id="undoCut" disabled>↶ Annuler coupe</button><button id="resetCuts" disabled>↺ Coupes égales</button><button id="trimReset" disabled>↺ Reset trim</button><button id="previewTrim" disabled>▶ Trim</button></div>
 <div class="tag" id="cutInfo" style="margin-top:8px">Découpe régulière</div>
 <div class="stat" id="trimLength">—</div>
 </section>
@@ -288,7 +311,6 @@ input[type=range]{accent-color:#ff704b}
 <div class="range-row"><label for="fade">Fade</label><output id="fadeOut">10 ms</output><input id="fade" type="range" min="0" max="250" value="10" style="grid-column:1/-1"></div>
 <div class="tag" style="margin:-2px 0 10px">Réglages mémorisés séparément pour chaque part</div>
 <div class="controls">
-<button id="reverse" disabled>↶ Reverse</button>
 <button id="shuffle" disabled>⤨ Shuffle</button>
 <button id="reset" disabled>Reset</button>
 </div>
@@ -311,9 +333,10 @@ input[type=range]{accent-color:#ff704b}
 (() => {
 const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
-let fileURL=null, duration=0, candidateURLs=[], auditionAudio=null, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
+const batchInput=$('batchFile');let browserFiles=[],browserURLs=new Map(),browserAudio=new Audio(),currentFile=null;
+let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
 const sliceFX=Array.from({length:16},()=>({pitch:100,volume:100,lowpass:20000}));
-let waveformPeaks=[], dragHandle=null, dragCutIndex=-1, dragPointerX=0, panViewStart=0, panViewEnd=0, zoomLevel=1, viewStart=0, viewEnd=0;
+let waveformPeaks=[], transientScores=[], dragHandle=null, dragCutIndex=-1, dragPointerX=0, panViewStart=0, panViewEnd=0, zoomLevel=1, viewStart=0, viewEnd=0;
 let freeChop=false, freeCuts=[];
 let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(count).fill(false), stepSlices=Array.from({length:count},(_,i)=>i), stepVelocity=Array(count).fill(0.85), selectedStep=0, seqStart=0;
 function resizeSequencer(n){
@@ -417,7 +440,7 @@ function drawWaveform(){
  });
 }
 async function buildWaveform(file){
- waveformPeaks=[];drawWaveform();
+ $('smartChop').disabled=true;waveformPeaks=[];transientScores=[];drawWaveform();
  try{
   const AC=window.AudioContext||window.webkitAudioContext;
   const temp=new AC();
@@ -425,7 +448,7 @@ async function buildWaveform(file){
   const decoded=await temp.decodeAudioData(bytes.slice(0));
   const channels=[];
   for(let c=0;c<decoded.numberOfChannels;c++)channels.push(decoded.getChannelData(c));
-  const bins=Math.min(1800,Math.max(500,Math.floor(decoded.duration*35)));
+  const bins=Math.min(12000,Math.max(700,Math.floor(decoded.duration*100)));
   const block=Math.max(1,Math.floor(decoded.length/bins));
   const peaks=new Array(bins).fill(0);
   for(let i=0;i<bins;i++){
@@ -435,11 +458,59 @@ async function buildWaveform(file){
    peaks[i]=peak;
   }
   waveformPeaks=peaks;
+  // Positive envelope changes approximate attacks; no decoded buffer is used for playback.
+  transientScores=new Array(bins).fill(0);
+  const mode=$('smartMode').value;
+  const lookback=mode==='vocal'?10:(mode==='drums'?3:6);
+  for(let i=1;i<bins-1;i++){
+   let base=0,n=0;
+   for(let j=Math.max(0,i-lookback);j<i;j++){base+=peaks[j];n++}
+   base/=Math.max(1,n);
+   const rise=Math.max(0,peaks[i]-base);
+   const local=Math.max(0,peaks[i]-Math.max(peaks[i-1],peaks[i+1])*.55);
+   transientScores[i]=mode==='drums'?rise*1.25+local*.8:mode==='vocal'?rise*.75+local*.35:rise+local*.65;
+  }
   await temp.close();
-  drawWaveform();
+  $('smartChop').disabled=false;drawWaveform();
  }catch(e){
+  $('smartChop').disabled=true;
   say('Audio prêt. Forme d’onde indisponible sur ce fichier, trim toujours utilisable.');
  }
+}
+function runSmartChop(){
+ if(!duration||!waveformPeaks.length||!transientScores.length){say('Analyse audio indisponible pour ce sample.');return;}
+ const n=Number($('count').value), span=trimEnd-trimStart;
+ if(n<2||span<=0)return;
+ const bins=transientScores.length, binTime=duration/bins;
+ const sensitivity=Number($('sensitivity').value)/100;
+ const mode=$('smartMode').value;
+ const maxScore=Math.max(0,...transientScores);
+ if(maxScore<=0){say('Aucun transitoire net détecté. Découpe égale conservée.');return;}
+ const threshold=maxScore*(.025+sensitivity*(mode==='drums'?.42:mode==='vocal'?.22:.32));
+ const minGap=Math.max(.025,span/(n*5));
+ const cuts=[];
+ for(let k=1;k<n;k++){
+  const target=trimStart+span*k/n;
+  const radius=span/n*(mode==='drums'?.46:mode==='vocal'?.38:.43);
+  const lo=Math.max(1,Math.floor((target-radius)/binTime));
+  const hi=Math.min(bins-2,Math.ceil((target+radius)/binTime));
+  let best=-1,bestScore=0;
+  for(let i=lo;i<=hi;i++){
+   const t=(i+.5)*binTime;
+   if(t<=trimStart+minGap||t>=trimEnd-minGap||cuts.some(c=>Math.abs(c-t)<minGap))continue;
+   const score=transientScores[i];
+   // Prefer a strong attack, but penalize cuts far from the intended rhythmic boundary.
+   const distance=Math.abs(t-target)/(radius||1);
+   const adjusted=score*(1-distance*.28);
+   if(adjusted>bestScore){bestScore=adjusted;best=i;}
+  }
+  if(best>=0&&bestScore>=threshold)cuts.push((best+.5)*binTime);
+  else cuts.push(target);
+ }
+ freeChop=true;freeCuts=cuts.sort((a,b)=>a-b);$('freeChop').classList.add('active');$('freeChop').textContent='✓ Chop libre actif';
+ $('waveHelp').textContent='Coupes détectées automatiquement · glisse les repères rouges pour les affiner.';
+ syncCuts();drawWaveform();$('smartState').textContent=`${cuts.length} COUPES · ${mode.toUpperCase()}`;
+ say(`${cuts.length+1} parts créées à partir des transitoires détectés.`);
 }
 function waveformPointerDown(e){
  if(!duration)return;
@@ -742,35 +813,6 @@ function syncCuts(){
  $('undoCut').disabled=!freeChop||freeCuts.length===0;
  $('resetCuts').disabled=!duration;
 }
-function smartChop(){
- if(!duration||!waveformPeaks.length){say('La forme d’onde doit être prête avant le Smart chop.');return;}
- const n=Number($('count').value), span=trimEnd-trimStart;
- if(n<2||span<=0)return;
- const peaks=waveformPeaks, binTime=duration/peaks.length;
- const cuts=[];
- // Détecte les attaques par hausse rapide d’énergie, puis choisit le meilleur candidat
- // autour de chaque frontière théorique pour conserver exactement le nombre de parts demandé.
- for(let k=1;k<n;k++){
-  const target=trimStart+span*k/n, radius=span/n*.42;
-  const lo=Math.max(2,Math.floor((target-radius)/binTime));
-  const hi=Math.min(peaks.length-2,Math.ceil((target+radius)/binTime));
-  let best=-1,bestScore=-Infinity;
-  for(let i=lo;i<=hi;i++){
-   const rise=Math.max(0,peaks[i]-peaks[i-3]);
-   const local=peaks[i]>=peaks[i-1]&&peaks[i]>=peaks[i+1]?1:0.35;
-   const proximity=1-Math.abs(i*binTime-target)/Math.max(radius,.001)*.18;
-   const score=(rise*.78+peaks[i]*.22)*local*proximity;
-   if(score>bestScore){bestScore=score;best=i;}
-  }
-  const candidate=best>=0?best*binTime:target;
-  const min=cuts.length?cuts[cuts.length-1]+Math.max(.015,span/n*.35):trimStart+Math.max(.015,span/n*.35);
-  const max=trimEnd-Math.max(.015,span/n*.35)*(n-k);
-  cuts.push(Math.max(min,Math.min(max,candidate)));
- }
- freeChop=true;freeCuts=cuts;$('freeChop').classList.add('active');$('freeChop').textContent='✓ Chop libre actif';
- $('waveHelp').textContent='Smart chop : repères rouges détectés automatiquement · tu peux les déplacer.';
- syncCuts();drawWaveform();say(`Smart chop : ${n} parts placées sur les attaques détectées. Ajuste les repères si besoin.`);
-}
 function addFreeCut(t){
  const gap=Math.max(.015,duration/10000);
  if(t<=trimStart+gap||t>=trimEnd-gap||freeCuts.some(v=>Math.abs(v-t)<gap))return;
@@ -780,48 +822,56 @@ function addFreeCut(t){
 function setFreeChop(on){
  freeChop=on;freeCuts=[];$('freeChop').classList.toggle('active',on);
  $('waveHelp').textContent=on?'Tape pour ajouter une coupe · glisse un repère rouge pour le déplacer.':'Les repères jaunes montrent les coupes régulières. Zoome puis glisse la forme d’onde pour te déplacer.';
- $('freeChop').textContent=on?'✓ Chop libre actif':'✂ Chop libre';syncCuts();drawWaveform();
+ $('freeChop').textContent=on?'✓ Chop libre actif':'✂ Chop libre';if(!on)$('smartState').textContent='ANALYSE TRANSITOIRES';syncCuts();drawWaveform();
 }
 function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepPattern=Array(count).fill(false);stepSlices=Array.from({length:count},(_,i)=>i);stepVelocity=Array(count).fill(0.85);selectedStep=0;renderPizza();updateSelection();renderSteps()}
 function loadSample(f){
  if(!f||!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return;}
+ stopAll();stopSequence();browserAudio.pause();
  if(fileURL)URL.revokeObjectURL(fileURL);
- stopAll();fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
- $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample sélectionné. Préparation du lecteur…');
+ currentFile=f;fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
+ $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
  preview.onloadedmetadata=()=>{
   duration=preview.duration;trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;freeChop=false;freeCuts=[];
+  $('freeChop').classList.remove('active');$('freeChop').textContent='✂ Chop libre';
   ['zoomIn','zoomOut','zoomFit'].forEach(id=>$(id).disabled=false);$('zoomLabel').textContent='100 %';
   $('duration').textContent=duration.toFixed(1)+' s';
   $('preview').disabled=false;$('stopPreview').disabled=false;
-  $('trimReset').disabled=false;$('previewTrim').disabled=false;$('freeChop').disabled=false;$('smartChop').disabled=false;$('resetCuts').disabled=false;
-  ['playSlice','stopAll','reverse','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
-  try{initAudio();makeVoices();say('Prêt. La lecture utilise le fichier original, sans décodage PCM.')}catch(e){say(e.message)}
-  updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);
+  $('trimReset').disabled=false;$('previewTrim').disabled=false;$('freeChop').disabled=false;$('resetCuts').disabled=false;$('smartChop').disabled=false;
+  ['playSlice','stopAll','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
+  try{initAudio();makeVoices();say('Prêt. Lecture depuis le fichier original, sans réencodage.')}catch(e){say(e.message)}
+  count=Number($('count').value);resetOrder();updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);
  };
  preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
 }
-function stopAudition(){if(auditionAudio){auditionAudio.pause();auditionAudio.currentTime=0;auditionAudio=null;}document.querySelectorAll('[data-audition]').forEach(b=>b.textContent='▶ Écouter');}
-fileInput.addEventListener('change',()=>{
- const files=Array.from(fileInput.files||[]).filter(f=>f.type.startsWith('audio/'));
- if(!files.length)return;
- stopAudition();candidateURLs.forEach(u=>URL.revokeObjectURL(u));candidateURLs=[];
- const box=$('sampleCandidates');box.innerHTML='';box.hidden=false;
- files.forEach((f,i)=>{
-  const url=URL.createObjectURL(f);candidateURLs.push(url);
-  const row=document.createElement('div');row.className='sample-candidate';
-  const name=document.createElement('span');name.className='sample-name';name.textContent=f.name;name.title=f.name;
-  const listen=document.createElement('button');listen.type='button';listen.dataset.audition='1';listen.textContent='▶ Écouter';
-  listen.addEventListener('click',()=>{
-   if(auditionAudio&&auditionAudio.src===url&&!auditionAudio.paused){stopAudition();return;}
-   stopAudition();auditionAudio=new Audio(url);auditionAudio.addEventListener('ended',stopAudition,{once:true});
-   listen.textContent='■ Stop';auditionAudio.play().catch(()=>say('Aperçu impossible pour ce format.'));
+fileInput.addEventListener('change',()=>{const f=fileInput.files&&fileInput.files[0];if(f)loadSample(f);});
+function renderSampleBrowser(){
+ $('sampleBrowser').innerHTML='';$('browserCount').textContent=`${browserFiles.length} sample${browserFiles.length>1?'s':''}`;
+ browserFiles.forEach((f,index)=>{
+  const row=document.createElement('div');row.className='sample-item'+(f===currentFile?' current':'');
+  const meta=document.createElement('div');meta.className='sample-meta';
+  const name=document.createElement('div');name.className='sample-name';name.textContent=f.name;
+  const durationLabel=document.createElement('div');durationLabel.className='sample-duration';durationLabel.textContent=f._duration||'Durée…';meta.append(name,durationLabel);
+  const previewBtn=document.createElement('button');previewBtn.className='preview-sample';previewBtn.textContent='▶ Écouter';
+  previewBtn.addEventListener('click',()=>{
+   const url=browserURLs.get(f);if(!url)return;
+   if(browserAudio.src===url&&!browserAudio.paused){browserAudio.pause();previewBtn.textContent='▶ Écouter';return;}
+   browserAudio.pause();browserAudio.src=url;browserAudio.currentTime=0;
+   browserAudio.play().then(()=>{document.querySelectorAll('.preview-sample').forEach(b=>b.textContent='▶ Écouter');previewBtn.textContent='■ Stop';}).catch(()=>say('Préécoute impossible sur ce format.'));
+   browserAudio.onended=()=>previewBtn.textContent='▶ Écouter';
   });
-  const choose=document.createElement('button');choose.type='button';choose.className='choose';choose.textContent='Choisir';
-  choose.addEventListener('click',()=>{stopAudition();box.hidden=true;loadSample(f);});
-  row.append(name,listen,choose);box.appendChild(row);
+  const choose=document.createElement('button');choose.className='choose-sample';choose.textContent='Charger';choose.addEventListener('click',()=>{browserAudio.pause();loadSample(f);renderSampleBrowser();});
+  row.append(meta,previewBtn,choose);$('sampleBrowser').appendChild(row);
+  if(!f._duration){const a=new Audio();a.preload='metadata';a.src=browserURLs.get(f);a.onloadedmetadata=()=>{f._duration=Number.isFinite(a.duration)?a.duration.toFixed(1)+' s':'Durée inconnue';durationLabel.textContent=f._duration;a.src='';};a.onerror=()=>{f._duration='Durée inconnue';durationLabel.textContent=f._duration;};}
  });
- if(files.length===1){say('Écoute l’aperçu ou choisis ce sample pour le charger.');}
- else say(`${files.length} samples prêts : écoute-les puis choisis celui à charger.`);
+}
+batchInput.addEventListener('change',()=>{
+ const added=Array.from(batchInput.files||[]).filter(f=>f.type.startsWith('audio/'));
+ if(!added.length)return;
+ browserFiles=added;
+ browserURLs.forEach(url=>URL.revokeObjectURL(url));browserURLs.clear();
+ browserFiles.forEach(f=>browserURLs.set(f,URL.createObjectURL(f)));
+ renderSampleBrowser();
 });
 function playTrimPreview(){
  if(!duration)return;
@@ -833,6 +883,9 @@ function playTrimPreview(){
  preview.currentTime=start;
 }
 $('preview').addEventListener('click',playTrimPreview);
+$('smartChop').addEventListener('click',runSmartChop);
+$('sensitivity').addEventListener('input',()=>{$('sensitivityOut').textContent=$('sensitivity').value+'%'});
+$('smartMode').addEventListener('change',()=>{if(currentFile)buildWaveform(currentFile)});
 $('previewTrim').addEventListener('click',playTrimPreview);
 $('stopPreview').addEventListener('click',()=>{preview.pause();preview.currentTime=trimStart;preview.ontimeupdate=null});
 $('zoomIn').addEventListener('click',()=>setZoom(zoomLevel*2));
@@ -843,7 +896,6 @@ $('waveform').addEventListener('pointermove',waveformPointerMove);
 $('waveform').addEventListener('pointerup',waveformPointerUp);
 $('waveform').addEventListener('pointercancel',waveformPointerUp);
 $('freeChop').addEventListener('click',()=>setFreeChop(!freeChop));
-$('smartChop').addEventListener('click',smartChop);
 $('undoCut').addEventListener('click',()=>{if(freeCuts.length){freeCuts.pop();syncCuts()}});
 $('resetCuts').addEventListener('click',()=>{if(freeChop){freeCuts=[];syncCuts()}else{setFreeChop(false);count=Number($('count').value);resetOrder();updateTrimUI()}});
 $('trimReset').addEventListener('click',()=>{
@@ -857,7 +909,6 @@ $('pitch').addEventListener('input',()=>{sliceFX[selected].pitch=Number($('pitch
 $('sliceVolume').addEventListener('input',()=>{sliceFX[selected].volume=Number($('sliceVolume').value);$('sliceVolumeOut').textContent=sliceFX[selected].volume+'%'});
 $('lowpass').addEventListener('input',()=>{sliceFX[selected].lowpass=Number($('lowpass').value);const v=sliceFX[selected].lowpass;$('lowpassOut').textContent=v>=1000?(v/1000).toFixed(v%1000?1:0)+' kHz':v+' Hz'});
 $('fade').addEventListener('input',()=>$('fadeOut').textContent=$('fade').value+' ms');
-$('reverse').addEventListener('click',()=>{order.reverse();renderPizza();renderSteps()});
 $('shuffle').addEventListener('click',()=>{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}renderPizza();renderSteps()});
 $('reset').addEventListener('click',resetOrder);
 $('seqPlay').addEventListener('click',async()=>{if(seqRunning)return;try{initAudio();if(audioCtx.state==='suspended')await audioCtx.resume();seqRunning=true;seqIndex=0;$('seqPlay').textContent='● Séquence en cours';tickSequence()}catch(e){say(e.message)}});
