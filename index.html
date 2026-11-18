@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#171714">
-<title>Celluloid Circles — Pizza Lab</title>
+<title>Celluloid Circles — Pizza Lab V15</title>
 <style>
 :root{--bg:#171714;--panel:#22221e;--panel2:#2b2b25;--ink:#f1eedf;--muted:#aaa795;--red:#ef5b42;--yellow:#e8c75a;--line:#45443a;--green:#a8c77b}
 *{box-sizing:border-box}
@@ -248,6 +248,14 @@ input[type=range]{accent-color:#ff704b}
 #sensitivity{height:18px;margin:0 0 8px}
 .smart-button{width:100%;background:linear-gradient(135deg,#f7c45d,#e69a3d);border-color:#ffdc8b;color:#26170d;font-weight:900}
 @media(max-width:420px){.sample-item{grid-template-columns:minmax(0,1fr) auto}.sample-item .choose-sample{grid-column:2;grid-row:1}.sample-item .preview-sample{grid-column:2;grid-row:2}.sample-meta{grid-row:1/3}.smart-controls label[for=sensitivity]{margin-left:0}}
+.project-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px}
+.project-tools input{min-width:0;width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,218,166,.2);background:#211b16;color:var(--ink)}
+.project-list{display:grid;gap:7px;margin-top:10px}
+.project-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;align-items:center;padding:9px 10px;border:1px solid rgba(255,218,166,.12);border-radius:11px;background:rgba(0,0,0,.16)}
+.project-meta{min-width:0}.project-name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-date{font-size:10px;color:var(--muted);margin-top:2px}
+.project-item button{padding:7px 9px;font-size:11px;white-space:nowrap}.project-item .load-project{background:linear-gradient(135deg,#ff7448,#d94429);color:#1c100b;border-color:#ff9567}
+.project-empty{font-size:11px;color:var(--muted);padding:8px 2px}
+@media(max-width:420px){.project-item{grid-template-columns:minmax(0,1fr) auto}.project-item .delete-project{grid-column:2;grid-row:2}.project-item .load-project{grid-column:2;grid-row:1}.project-meta{grid-row:1/3}}
 </style>
 
 </head>
@@ -268,6 +276,12 @@ input[type=range]{accent-color:#ff704b}
 </div>
 <audio id="previewAudio" preload="metadata" style="display:none"></audio>
 <div class="status" id="status"></div>
+</section>
+
+<section class="panel" id="projectPanel">
+ <div class="row"><strong>PROJETS</strong><span class="tag">LOCAL</span></div>
+ <div class="project-tools"><input id="projectName" type="text" maxlength="48" placeholder="Nom du projet"><button id="saveProject" class="primary" disabled>＋ Sauver</button></div>
+ <div id="projectList" class="project-list"><div class="project-empty">Charge un sample pour sauvegarder ton premier projet.</div></div>
 </section>
 
 <section class="panel">
@@ -825,12 +839,12 @@ function setFreeChop(on){
  $('freeChop').textContent=on?'✓ Chop libre actif':'✂ Chop libre';if(!on)$('smartState').textContent='ANALYSE TRANSITOIRES';syncCuts();drawWaveform();
 }
 function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepPattern=Array(count).fill(false);stepSlices=Array.from({length:count},(_,i)=>i);stepVelocity=Array(count).fill(0.85);selectedStep=0;renderPizza();updateSelection();renderSteps()}
-function loadSample(f){
+function loadSample(f, afterLoad){
  if(!f||!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return;}
  stopAll();stopSequence();browserAudio.pause();
  if(fileURL)URL.revokeObjectURL(fileURL);
  currentFile=f;fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
- $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
+ $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';$('saveProject').disabled=false;say('Sample importé. Préparation du lecteur…');
  preview.onloadedmetadata=()=>{
   duration=preview.duration;trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;freeChop=false;freeCuts=[];
   $('freeChop').classList.remove('active');$('freeChop').textContent='✂ Chop libre';
@@ -840,10 +854,73 @@ function loadSample(f){
   $('trimReset').disabled=false;$('previewTrim').disabled=false;$('freeChop').disabled=false;$('resetCuts').disabled=false;$('smartChop').disabled=false;
   ['playSlice','stopAll','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
   try{initAudio();makeVoices();say('Prêt. Lecture depuis le fichier original, sans réencodage.')}catch(e){say(e.message)}
-  count=Number($('count').value);resetOrder();updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);
+  count=Number($('count').value);resetOrder();updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);if(typeof afterLoad==='function')afterLoad();
  };
  preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
 }
+// Project persistence: the original audio Blob and the complete editing state live in IndexedDB.
+const PROJECT_DB='pizza-lab-projects', PROJECT_STORE='projects';
+function openProjectDB(){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open(PROJECT_DB,1);
+ req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(PROJECT_STORE))db.createObjectStore(PROJECT_STORE,{keyPath:'id'});};
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Base de projets inaccessible.'));
+ });}
+async function projectRequest(mode,work){const db=await openProjectDB();return new Promise((resolve,reject)=>{
+ const tx=db.transaction(PROJECT_STORE,mode),store=tx.objectStore(PROJECT_STORE);let result;
+ try{result=work(store)}catch(e){db.close();reject(e);return;}
+ tx.oncomplete=()=>{db.close();resolve(result&&result.result!==undefined?result.result:result)};
+ tx.onerror=()=>{db.close();reject(tx.error||new Error('Erreur de sauvegarde.'))};tx.onabort=()=>{db.close();reject(tx.error||new Error('Opération annulée.'))};
+ });}
+async function getAllProjects(){const db=await openProjectDB();return new Promise((resolve,reject)=>{const tx=db.transaction(PROJECT_STORE,'readonly'),req=tx.objectStore(PROJECT_STORE).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close();tx.onerror=()=>{db.close();reject(tx.error)};});}
+function projectSnapshot(){
+ const safeName=($('projectName').value.trim()||currentFile.name.replace(/\.[^.]+$/,'')||'Sans titre').slice(0,48);
+ return {id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),name:safeName,updatedAt:Date.now(),audioName:currentFile.name,audioType:currentFile.type||'audio/mpeg',audioBlob:currentFile,
+ state:{trimStart,trimEnd,count:Number($('count').value),selected,order:[...order],freeChop,freeCuts:[...freeCuts],sliceFX:sliceFX.map(x=>({...x})),volume:Number($('volume').value),fade:Number($('fade').value),bpm:Number($('bpm').value),swing:Number($('swing').value),stepPattern:[...stepPattern],stepSlices:[...stepSlices],stepVelocity:[...stepVelocity],selectedStep,smartMode:$('smartMode').value,sensitivity:Number($('sensitivity').value)}};
+}
+async function refreshProjectList(){
+ const host=$('projectList');
+ try{const items=(await getAllProjects()).sort((a,b)=>b.updatedAt-a.updatedAt);host.innerHTML='';
+  if(!items.length){host.innerHTML='<div class="project-empty">Aucun projet sauvegardé pour le moment.</div>';return;}
+  items.forEach(item=>{const row=document.createElement('div');row.className='project-item';const meta=document.createElement('div');meta.className='project-meta';const name=document.createElement('div');name.className='project-name';name.textContent=item.name;const date=document.createElement('div');date.className='project-date';date.textContent=new Date(item.updatedAt).toLocaleString('fr-FR')+' · '+(item.audioName||'audio');meta.append(name,date);
+   const load=document.createElement('button');load.className='load-project';load.textContent='Ouvrir';load.addEventListener('click',()=>restoreProject(item.id));
+   const del=document.createElement('button');del.className='delete-project';del.textContent='✕';del.title='Supprimer ce projet';del.addEventListener('click',async()=>{if(!confirm('Supprimer « '+item.name+' » ?'))return;try{await projectRequest('readwrite',st=>st.delete(item.id));refreshProjectList();}catch(e){say(e.message)}});
+   row.append(meta,load,del);host.appendChild(row);
+  });
+ }catch(e){host.innerHTML='<div class="project-empty">Stockage local indisponible dans ce navigateur.</div>';say(e.message);}
+}
+async function saveProject(){
+ if(!currentFile){say('Charge un sample avant de sauvegarder.');return;}
+ const btn=$('saveProject');btn.disabled=true;btn.textContent='Sauvegarde…';
+ try{const item=projectSnapshot();const existing=(await getAllProjects()).find(x=>(x.name||'').toLocaleLowerCase('fr-FR')===item.name.toLocaleLowerCase('fr-FR'));if(existing)item.id=existing.id;await projectRequest('readwrite',st=>st.put(item));$('projectName').value=item.name;say('Projet sauvegardé sur cet appareil.');await refreshProjectList();}
+ catch(e){say('Sauvegarde impossible : '+e.message);}
+ finally{btn.disabled=!currentFile;btn.textContent='＋ Sauver';}
+}
+async function restoreProject(id){
+ try{const item=(await getAllProjects()).find(x=>x.id===id);if(!item||!item.audioBlob)throw new Error('Projet ou sample introuvable.');
+  stopSequence();stopAll();const f=new File([item.audioBlob],item.audioName||'sample-audio',{type:item.audioType||item.audioBlob.type||'audio/mpeg'});
+  $('projectName').value=item.name||'';
+  loadSample(f,()=>{
+   const st=item.state||{};trimStart=Math.max(0,Math.min(duration,Number(st.trimStart)||0));trimEnd=Math.max(trimStart+.01,Math.min(duration,Number(st.trimEnd)||duration));
+   $('count').value=String([4,8,12,16].includes(Number(st.count))?Number(st.count):8);count=Number($('count').value);
+   freeChop=!!st.freeChop;freeCuts=Array.isArray(st.freeCuts)?st.freeCuts.map(Number).filter(t=>t>trimStart&&t<trimEnd).sort((a,b)=>a-b).slice(0,15):[];
+   $('freeChop').classList.toggle('active',freeChop);$('freeChop').textContent=freeChop?'✓ Chop libre actif':'✂ Chop libre';
+   $('waveHelp').textContent=freeChop?'Tape pour ajouter une coupe · glisse un repère rouge pour le déplacer.':'Les repères jaunes montrent les coupes régulières. Zoome puis glisse la forme d’onde pour te déplacer.';
+   syncCuts();
+   order=Array.isArray(st.order)&&st.order.length===count?st.order.map(v=>Math.max(0,Math.min(count-1,Number(v)||0))):Array.from({length:count},(_,i)=>i);
+   selected=Math.max(0,Math.min(count-1,Number(st.selected)||0));
+   if(Array.isArray(st.sliceFX))st.sliceFX.slice(0,16).forEach((x,i)=>{if(x)sliceFX[i]={pitch:Number(x.pitch)||100,volume:Number.isFinite(Number(x.volume))?Number(x.volume):100,lowpass:Number(x.lowpass)||20000};});
+   $('volume').value=Number.isFinite(Number(st.volume))?st.volume:85;$('volOut').textContent=$('volume').value+'%';if(master)master.gain.setValueAtTime(Number($('volume').value)/100,audioCtx.currentTime);
+   $('fade').value=Number.isFinite(Number(st.fade))?st.fade:10;$('fadeOut').textContent=$('fade').value+' ms';
+   $('bpm').value=Number(st.bpm)||90;$('swing').value=Number(st.swing)||0;$('swingOut').textContent=$('swing').value+'%';
+   $('smartMode').value=['drums','sample','vocal'].includes(st.smartMode)?st.smartMode:'sample';$('sensitivity').value=Number(st.sensitivity)||55;$('sensitivityOut').textContent=$('sensitivity').value+'%';
+   stepPattern=Array.from({length:count},(_,i)=>!!(st.stepPattern||[])[i]);stepSlices=Array.from({length:count},(_,i)=>Math.max(0,Math.min(count-1,Number((st.stepSlices||[])[i])||0)));stepVelocity=Array.from({length:count},(_,i)=>Math.max(.05,Math.min(1,Number((st.stepVelocity||[])[i])||.85)));selectedStep=Math.max(0,Math.min(count-1,Number(st.selectedStep)||0));
+   $('stepVelocity').value=Math.round(stepVelocity[selectedStep]*100);$('velocityOut').textContent=$('stepVelocity').value+'%';
+   renderPizza();updateSelection();renderSteps();updateTrimUI();drawWaveform();say('Projet « '+(item.name||'Sans titre')+' » chargé.');
+  });
+ }catch(e){say('Ouverture impossible : '+e.message);}
+}
+$('saveProject').addEventListener('click',saveProject);
+refreshProjectList();
 fileInput.addEventListener('change',()=>{const f=fileInput.files&&fileInput.files[0];if(f)loadSample(f);});
 function renderSampleBrowser(){
  $('sampleBrowser').innerHTML='';$('browserCount').textContent=`${browserFiles.length} sample${browserFiles.length>1?'s':''}`;
