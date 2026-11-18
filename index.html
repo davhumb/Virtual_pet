@@ -230,6 +230,8 @@ input[type=range]{accent-color:#ff704b}
  .pizza-side button{min-height:45px}
 }
 @media(prefers-reduced-motion:reduce){.slice.playing{animation:none}}
+
+.sample-candidates{display:grid;gap:7px;margin-top:12px}.sample-candidate{display:flex;align-items:center;gap:8px;padding:9px;background:#292820;border:1px solid #514737;border-radius:9px;min-width:0}.sample-candidate .sample-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.sample-candidate button{padding:7px 10px;font-size:11px}.sample-candidate button.choose{border-color:#d9b85c;color:#ffe6a0}
 </style>
 
 </head>
@@ -240,7 +242,8 @@ input[type=range]{accent-color:#ff704b}
 
 <section class="panel">
 <label class="upload" for="file"><div><strong>＋ Importer un sample</strong><small>MP3 · WAV · OGG</small></div></label>
-<input id="file" type="file" accept="audio/*">
+<input id="file" type="file" accept="audio/*" multiple>
+<div id="sampleCandidates" class="sample-candidates" hidden></div>
 <div class="fileline"><span id="filename">Aucun sample chargé</span><span id="duration">—</span></div>
 <div class="controls" style="margin-top:12px">
 <button id="preview" disabled>▶ Original</button>
@@ -258,7 +261,7 @@ input[type=range]{accent-color:#ff704b}
  <div class="wave-legend"><span><i class="in-dot"></i> IN <b id="trimStartOut">0.00 s</b></span><span><i class="out-dot"></i> OUT <b id="trimEndOut">—</b></span></div>
 </div>
 <p class="wave-help" id="waveHelp">Les repères jaunes montrent les coupes régulières. Zoome puis glisse la forme d’onde pour te déplacer.</p>
-<div class="controls" style="flex-wrap:wrap"><button id="freeChop" disabled>✂ Chop libre</button><button id="undoCut" disabled>↶ Annuler coupe</button><button id="resetCuts" disabled>↺ Coupes égales</button><button id="trimReset" disabled>↺ Reset trim</button><button id="previewTrim" disabled>▶ Trim</button></div>
+<div class="controls" style="flex-wrap:wrap"><button id="smartChop" disabled>✦ Smart chop</button><button id="freeChop" disabled>✂ Chop libre</button><button id="undoCut" disabled>↶ Annuler coupe</button><button id="resetCuts" disabled>↺ Coupes égales</button><button id="trimReset" disabled>↺ Reset trim</button><button id="previewTrim" disabled>▶ Trim</button></div>
 <div class="tag" id="cutInfo" style="margin-top:8px">Découpe régulière</div>
 <div class="stat" id="trimLength">—</div>
 </section>
@@ -308,7 +311,7 @@ input[type=range]{accent-color:#ff704b}
 (() => {
 const $ = id => document.getElementById(id);
 const fileInput=$('file'), preview=$('previewAudio'), svg=$('pizza');
-let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
+let fileURL=null, duration=0, candidateURLs=[], auditionAudio=null, trimStart=0, trimEnd=0, count=8, selected=0, order=[], voices=[], audioCtx=null, master=null;
 const sliceFX=Array.from({length:16},()=>({pitch:100,volume:100,lowpass:20000}));
 let waveformPeaks=[], dragHandle=null, dragCutIndex=-1, dragPointerX=0, panViewStart=0, panViewEnd=0, zoomLevel=1, viewStart=0, viewEnd=0;
 let freeChop=false, freeCuts=[];
@@ -739,6 +742,35 @@ function syncCuts(){
  $('undoCut').disabled=!freeChop||freeCuts.length===0;
  $('resetCuts').disabled=!duration;
 }
+function smartChop(){
+ if(!duration||!waveformPeaks.length){say('La forme d’onde doit être prête avant le Smart chop.');return;}
+ const n=Number($('count').value), span=trimEnd-trimStart;
+ if(n<2||span<=0)return;
+ const peaks=waveformPeaks, binTime=duration/peaks.length;
+ const cuts=[];
+ // Détecte les attaques par hausse rapide d’énergie, puis choisit le meilleur candidat
+ // autour de chaque frontière théorique pour conserver exactement le nombre de parts demandé.
+ for(let k=1;k<n;k++){
+  const target=trimStart+span*k/n, radius=span/n*.42;
+  const lo=Math.max(2,Math.floor((target-radius)/binTime));
+  const hi=Math.min(peaks.length-2,Math.ceil((target+radius)/binTime));
+  let best=-1,bestScore=-Infinity;
+  for(let i=lo;i<=hi;i++){
+   const rise=Math.max(0,peaks[i]-peaks[i-3]);
+   const local=peaks[i]>=peaks[i-1]&&peaks[i]>=peaks[i+1]?1:0.35;
+   const proximity=1-Math.abs(i*binTime-target)/Math.max(radius,.001)*.18;
+   const score=(rise*.78+peaks[i]*.22)*local*proximity;
+   if(score>bestScore){bestScore=score;best=i;}
+  }
+  const candidate=best>=0?best*binTime:target;
+  const min=cuts.length?cuts[cuts.length-1]+Math.max(.015,span/n*.35):trimStart+Math.max(.015,span/n*.35);
+  const max=trimEnd-Math.max(.015,span/n*.35)*(n-k);
+  cuts.push(Math.max(min,Math.min(max,candidate)));
+ }
+ freeChop=true;freeCuts=cuts;$('freeChop').classList.add('active');$('freeChop').textContent='✓ Chop libre actif';
+ $('waveHelp').textContent='Smart chop : repères rouges détectés automatiquement · tu peux les déplacer.';
+ syncCuts();drawWaveform();say(`Smart chop : ${n} parts placées sur les attaques détectées. Ajuste les repères si besoin.`);
+}
 function addFreeCut(t){
  const gap=Math.max(.015,duration/10000);
  if(t<=trimStart+gap||t>=trimEnd-gap||freeCuts.some(v=>Math.abs(v-t)<gap))return;
@@ -751,22 +783,45 @@ function setFreeChop(on){
  $('freeChop').textContent=on?'✓ Chop libre actif':'✂ Chop libre';syncCuts();drawWaveform();
 }
 function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepPattern=Array(count).fill(false);stepSlices=Array.from({length:count},(_,i)=>i);stepVelocity=Array(count).fill(0.85);selectedStep=0;renderPizza();updateSelection();renderSteps()}
-fileInput.addEventListener('change',()=>{
- const f=fileInput.files&&fileInput.files[0];if(!f)return;
- if(!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return}
+function loadSample(f){
+ if(!f||!f.type.startsWith('audio/')){say('Choisis un fichier audio.');return;}
  if(fileURL)URL.revokeObjectURL(fileURL);
- fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
- $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample importé. Préparation du lecteur…');
+ stopAll();fileURL=URL.createObjectURL(f);preview.src=fileURL;preview.load();
+ $('filename').textContent=f.name;$('duration').textContent='Lecture des infos…';say('Sample sélectionné. Préparation du lecteur…');
  preview.onloadedmetadata=()=>{
-  duration=preview.duration;trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;['zoomIn','zoomOut','zoomFit'].forEach(id=>$(id).disabled=false);$('zoomLabel').textContent='100 %';
+  duration=preview.duration;trimStart=0;trimEnd=duration;zoomLevel=1;viewStart=0;viewEnd=duration;freeChop=false;freeCuts=[];
+  ['zoomIn','zoomOut','zoomFit'].forEach(id=>$(id).disabled=false);$('zoomLabel').textContent='100 %';
   $('duration').textContent=duration.toFixed(1)+' s';
   $('preview').disabled=false;$('stopPreview').disabled=false;
-  $('trimReset').disabled=false;$('previewTrim').disabled=false;$('freeChop').disabled=false;$('resetCuts').disabled=false;
+  $('trimReset').disabled=false;$('previewTrim').disabled=false;$('freeChop').disabled=false;$('smartChop').disabled=false;$('resetCuts').disabled=false;
   ['playSlice','stopAll','reverse','shuffle','reset','seqPlay','seqStop','clearSteps'].forEach(id=>$(id).disabled=false);
   try{initAudio();makeVoices();say('Prêt. La lecture utilise le fichier original, sans décodage PCM.')}catch(e){say(e.message)}
   updateTrimUI();updateSelection();renderPizza();renderSteps();buildWaveform(f);
  };
  preview.onerror=()=>say('Ce format ne peut pas être lu par le navigateur.');
+}
+function stopAudition(){if(auditionAudio){auditionAudio.pause();auditionAudio.currentTime=0;auditionAudio=null;}document.querySelectorAll('[data-audition]').forEach(b=>b.textContent='▶ Écouter');}
+fileInput.addEventListener('change',()=>{
+ const files=Array.from(fileInput.files||[]).filter(f=>f.type.startsWith('audio/'));
+ if(!files.length)return;
+ stopAudition();candidateURLs.forEach(u=>URL.revokeObjectURL(u));candidateURLs=[];
+ const box=$('sampleCandidates');box.innerHTML='';box.hidden=false;
+ files.forEach((f,i)=>{
+  const url=URL.createObjectURL(f);candidateURLs.push(url);
+  const row=document.createElement('div');row.className='sample-candidate';
+  const name=document.createElement('span');name.className='sample-name';name.textContent=f.name;name.title=f.name;
+  const listen=document.createElement('button');listen.type='button';listen.dataset.audition='1';listen.textContent='▶ Écouter';
+  listen.addEventListener('click',()=>{
+   if(auditionAudio&&auditionAudio.src===url&&!auditionAudio.paused){stopAudition();return;}
+   stopAudition();auditionAudio=new Audio(url);auditionAudio.addEventListener('ended',stopAudition,{once:true});
+   listen.textContent='■ Stop';auditionAudio.play().catch(()=>say('Aperçu impossible pour ce format.'));
+  });
+  const choose=document.createElement('button');choose.type='button';choose.className='choose';choose.textContent='Choisir';
+  choose.addEventListener('click',()=>{stopAudition();box.hidden=true;loadSample(f);});
+  row.append(name,listen,choose);box.appendChild(row);
+ });
+ if(files.length===1){say('Écoute l’aperçu ou choisis ce sample pour le charger.');}
+ else say(`${files.length} samples prêts : écoute-les puis choisis celui à charger.`);
 });
 function playTrimPreview(){
  if(!duration)return;
@@ -788,6 +843,7 @@ $('waveform').addEventListener('pointermove',waveformPointerMove);
 $('waveform').addEventListener('pointerup',waveformPointerUp);
 $('waveform').addEventListener('pointercancel',waveformPointerUp);
 $('freeChop').addEventListener('click',()=>setFreeChop(!freeChop));
+$('smartChop').addEventListener('click',smartChop);
 $('undoCut').addEventListener('click',()=>{if(freeCuts.length){freeCuts.pop();syncCuts()}});
 $('resetCuts').addEventListener('click',()=>{if(freeChop){freeCuts=[];syncCuts()}else{setFreeChop(false);count=Number($('count').value);resetOrder();updateTrimUI()}});
 $('trimReset').addEventListener('click',()=>{
