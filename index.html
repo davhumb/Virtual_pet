@@ -262,6 +262,7 @@ input[type=range]{accent-color:#ff704b}
 <div class="browser-head"><label class="browser-upload" for="batchFile">＋ Ajouter plusieurs samples</label><input id="batchFile" type="file" accept="audio/*" multiple><span id="browserCount">0 sample</span></div>
 <div id="sampleBrowser" class="sample-browser"></div>
 <div class="fileline"><span id="filename">Aucun sample chargé</span><span id="duration">—</span></div>
+<div class="browser-head" style="margin-top:8px"><button id="saveProject" type="button">💾 Sauvegarder le projet</button><label class="browser-upload" for="openProject">📂 Ouvrir un projet</label><input id="openProject" type="file" accept=".pizza,.json,application/json"><span id="saveState" style="font-size:11px;opacity:.85"></span></div>
 <div class="controls" style="margin-top:12px">
 <button id="preview" disabled>▶ Original</button>
 <button id="stopPreview" disabled>■ Stop</button>
@@ -339,13 +340,17 @@ let fileURL=null, duration=0, trimStart=0, trimEnd=0, count=8, selected=0, order
 const sliceFX=Array.from({length:16},()=>({pitch:100,volume:100,lowpass:20000}));
 let waveformPeaks=[], transientScores=[], dragHandle=null, dragCutIndex=-1, dragPointerX=0, panViewStart=0, panViewEnd=0, zoomLevel=1, viewStart=0, viewEnd=0;
 let freeChop=false, freeCuts=[];
-let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(count).fill(false), stepSlices=Array.from({length:count},(_,i)=>i), stepVelocity=Array(count).fill(0.85), selectedStep=0, seqStart=0, seqAt=0;
+let seqTimer=null, seqIndex=0, seqRunning=false, stepPattern=Array(count).fill(true), stepSlices=Array.from({length:count},(_,i)=>i), stepVelocity=Array(count).fill(0.85), selectedStep=0, seqStart=0, seqAt=0;
 function resizeSequencer(n){
- const oldPattern=stepPattern, oldSlices=stepSlices, oldVelocity=stepVelocity;
- stepPattern=Array.from({length:n},(_,i)=>oldPattern[i]??false);
- stepSlices=Array.from({length:n},(_,i)=>Math.min(n-1,oldSlices[i]??i));
- stepVelocity=Array.from({length:n},(_,i)=>oldVelocity[i]??0.85);
- selectedStep=Math.min(selectedStep,n-1);
+ const op=stepPattern, os=stepSlices, ov=stepVelocity;
+ stepPattern=Array.from({length:n},(_,i)=>op[i]??true);
+ stepVelocity=Array.from({length:n},(_,i)=>ov[i]??0.85);
+ // chaque part n'apparaît qu'une seule fois : on garde les choix valides et on complète avec les parts manquantes
+ const used=new Set(), res=[];
+ for(let i=0;i<n;i++){const v=os[i];if(v!=null&&v>=0&&v<n&&!used.has(v)){res[i]=v;used.add(v)}}
+ const free=[];for(let s=0;s<n;s++)if(!used.has(s))free.push(s);
+ for(let i=0;i<n;i++)if(res[i]===undefined)res[i]=free.shift();
+ stepSlices=res; selectedStep=Math.min(selectedStep,n-1);
 }
 const colors=['#e8c75a','#d8a85b','#c87d4d','#a8b86d','#78a99a','#7898a9','#a48ab3','#d17c86'];
 const isAudio=f=>!!f&&((f.type||'').startsWith('audio/')||/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i.test(f.name||''));
@@ -771,7 +776,7 @@ function renderSteps(){
   b.innerHTML=`<span>${String(label)}</span><i style="height:${Math.round(stepVelocity[i]*18)}px"></i>`;
   b.title=`Pas ${i+1} · part ${label} · velocity ${Math.round(stepVelocity[i]*100)}%`;
   b.addEventListener('click',()=>{selectedStep=i;$('stepVelocity').value=Math.round(stepVelocity[i]*100);$('velocityOut').textContent=Math.round(stepVelocity[i]*100)+'%';stepPattern[i]=!stepPattern[i];renderSteps()});
-  b.addEventListener('dblclick',e=>{e.preventDefault();stepSlices[i]=selected;stepPattern[i]=true;renderSteps()});
+  b.addEventListener('dblclick',e=>{e.preventDefault();const j=stepSlices.indexOf(selected);if(j>=0&&j!==i){const t=stepSlices[i];stepSlices[i]=selected;stepSlices[j]=t}stepPattern[i]=true;renderSteps()});
   $('steps').appendChild(b);
  });
 }
@@ -817,7 +822,7 @@ function setFreeChop(on){
  $('waveHelp').textContent=on?'Tape pour ajouter une coupe · glisse un repère rouge pour le déplacer.':'Les repères jaunes montrent les coupes régulières. Zoome puis glisse la forme d’onde pour te déplacer.';
  $('freeChop').textContent=on?'✓ Chop libre actif':'✂ Chop libre';if(!on)$('smartState').textContent='ANALYSE TRANSITOIRES';syncCuts();drawWaveform();
 }
-function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepPattern=Array(count).fill(false);stepSlices=Array.from({length:count},(_,i)=>i);stepVelocity=Array(count).fill(0.85);selectedStep=0;renderPizza();updateSelection();renderSteps()}
+function resetOrder(){order=Array.from({length:count},(_,i)=>i);selected=0;stepPattern=Array(count).fill(true);stepSlices=Array.from({length:count},(_,i)=>i);stepVelocity=Array(count).fill(0.85);selectedStep=0;renderPizza();updateSelection();renderSteps()}
 function loadSample(f,fromRestore){
  if(!isAudio(f)){say('Choisis un fichier audio.');return;}
  stopAll();stopSequence();browserAudio.pause();
@@ -917,7 +922,7 @@ resetOrder();
 /* ---- mémoire : les fichiers originaux restent dans le navigateur, les réglages aussi ---- */
 const PSK='pizzaLabState3';let restored=false,pendingRestore=null,lastSaved='';
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('pizza_lab_v3',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function idbPut(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}}
+async function idbPut(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)});return true}catch(e){return false}}
 async function idbGet(k){try{const d=await idb();return await new Promise((res,rej)=>{const r=d.transaction('k').objectStore('k').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){return null}}
 function persistCur(f){idbPut('cur',f);try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}
 function persistList(){idbPut('list',browserFiles.slice())}
@@ -933,7 +938,7 @@ function applyRestore(st){
   syncCuts();
   if(Array.isArray(st.order)&&st.order.length===count)order=st.order.slice();
   if(Array.isArray(st.sliceFX))st.sliceFX.forEach((f,i)=>{if(sliceFX[i]&&f)Object.assign(sliceFX[i],{pitch:+f.pitch||100,volume:+f.volume||100,lowpass:+f.lowpass||20000})});
-  if(Array.isArray(st.stepPattern)&&st.stepPattern.length===count){stepPattern=st.stepPattern.slice();stepSlices=Array.from({length:count},(_,i)=>Math.min(count-1,(st.stepSlices||[])[i]??i));stepVelocity=Array.from({length:count},(_,i)=>(st.stepVelocity||[])[i]??.85)}
+  if(Array.isArray(st.stepPattern)&&st.stepPattern.length===count){stepPattern=st.stepPattern.slice();stepSlices=Array.from({length:count},(_,i)=>Math.min(count-1,(st.stepSlices||[])[i]??i));stepVelocity=Array.from({length:count},(_,i)=>(st.stepVelocity||[])[i]??.85);resizeSequencer(count)}
   selected=Math.min(st.selected||0,count-1);selectedStep=Math.min(st.selectedStep||0,count-1);
   ['bpm','swing','fade','volume'].forEach(k=>{if(st[k]!=null)$(k).value=st[k]});
   $('volOut').textContent=$('volume').value+'%';$('fadeOut').textContent=$('fade').value+' ms';$('swingOut').textContent=$('swing').value+'%';
@@ -953,7 +958,51 @@ async function restoreAll(){
   renderSampleBrowser();
  }catch(e){}finally{restored=true}
 }
-restoreAll();
+
+/* ---- projet exportable : un fichier .pizza qui contient les samples ET tous les réglages ---- */
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())}
+function fileToData(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(f)})}
+function dataToBlob(u){const i=u.indexOf(','),meta=u.slice(5,i),bin=atob(u.slice(i+1)),n=bin.length,out=new Uint8Array(n);for(let k=0;k<n;k+=32768){const e=Math.min(n,k+32768);for(let j=k;j<e;j++)out[j]=bin.charCodeAt(j)}return new Blob([out],{type:meta.split(';')[0]})}
+async function saveProject(){
+ const el=$('saveState');
+ try{
+  el.style.color='';el.textContent='Préparation du projet…';
+  const list=browserFiles.slice();if(currentFile&&!list.includes(currentFile))list.unshift(currentFile);
+  if(!list.length){el.textContent='Rien à sauvegarder : charge d’abord un sample.';return}
+  const total=list.reduce((n,f)=>n+f.size,0);
+  if(total>200e6){el.textContent='Projet trop lourd ('+Math.round(total/1e6)+' Mo) : retire des samples.';return}
+  const files=[];for(const f of list)files.push({name:f.name,type:f.type,data:await fileToData(f)});
+  const proj={app:'pizza-lab',v:3,saved:new Date().toISOString(),current:currentFile?list.indexOf(currentFile):-1,state:JSON.parse(snapshot()),files};
+  const blob=new Blob([JSON.stringify(proj)],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='pizza-projet-'+stamp()+'.pizza';document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+  el.textContent='Projet enregistré : '+list.length+' sample'+(list.length>1?'s':'')+' · '+(blob.size/1048576).toFixed(1)+' Mo (fichier .pizza)';
+ }catch(e){el.style.color='#ffb347';el.textContent='Sauvegarde impossible : '+e.message}
+}
+async function openProject(file){
+ const el=$('saveState');
+ try{
+  const proj=JSON.parse(await file.text());
+  if(!proj||proj.app!=='pizza-lab'||!Array.isArray(proj.files))throw new Error('fichier de projet non reconnu');
+  const files=proj.files.map(x=>new File([dataToBlob(x.data)],x.name||'sample',{type:x.type||''}));
+  stopAll();stopSequence();
+  browserURLs.forEach(u=>URL.revokeObjectURL(u));browserURLs.clear();browserFiles=files.slice();browserFiles.forEach(f=>browserURLs.set(f,URL.createObjectURL(f)));
+  persistList();
+  const cur=files[proj.current]||files[0];
+  if(cur){pendingRestore=proj.state||null;loadSample(cur)}
+  renderSampleBrowser();el.style.color='';el.textContent='Projet ouvert : '+files.length+' sample'+(files.length>1?'s':'');
+ }catch(e){el.style.color='#ffb347';el.textContent='Ouverture impossible : '+e.message}
+}
+$('saveProject').addEventListener('click',saveProject);
+$('openProject').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)openProject(f)});
+async function checkStorage(){
+ let ok=false;try{ok=(await idbPut('probe',Date.now()))&&(await idbGet('probe'))!=null}catch(e){}
+ const el=$('saveState');if(!el.textContent){el.textContent=ok?'Sauvegarde auto : active dans ce navigateur':'Sauvegarde auto indisponible ici : utilise 💾 pour garder ton travail';el.style.color=ok?'':'#ffb347'}
+}
+function saveNow(){if(restored&&currentFile){try{localStorage.setItem(PSK,snapshot())}catch(e){}}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow()});window.addEventListener('pagehide',saveNow);
+
+restoreAll().then(checkStorage);
 
 window.addEventListener('resize',drawWaveform);
 })();
